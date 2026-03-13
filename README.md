@@ -1,4 +1,9 @@
-# UNI SIGEA - Documentación y Endpoints
+# UNI SIGEA - Documentación y Endpoints 
+<h2>
+  <img src="<img width="229" height="179" alt="Gemini_Generated_Image_b9g9c0b9g9c0b9g9-removebg-preview" src="https://github.com/user-attachments/assets/8698f256-59b1-4716-a0fd-d1677467f879" />
+" alt="Logo SIGEA" width="40" style="vertical-align: middle; margin-right: 10px;">
+  UNI SIGEA - Documentación y Endpoints
+</h2>
 
 Este archivo contiene la referencia de los endpoints (API de backend) corporativos y los enlaces a las vistas (Frontend) correspondientes a los diferentes CRUD del sistema.
 
@@ -54,3 +59,4 @@ La mayoría de estos endpoints están respaldados por el `DefaultRouter` de DRF,
 - **Health Check:** `GET /api/health/` (Verificar la salud y si se encuentra encendida la API).
 - **Alias Requisitos (Crear):** `POST /api/requisitos/` (Atajo para creación de documentos requeridos).
 - **Alias Postulantes (Crear):** `POST /api/postulantes/` (Atajo para creación de postulantes).
+
