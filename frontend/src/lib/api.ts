@@ -8,6 +8,14 @@ async function request<T>(
   isMultipart = false
 ): Promise<T> {
   const headers = new Headers(init.headers ?? {});
+
+  // Token JWT automático
+  const token = localStorage.getItem("token");
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  // Content-Type solo si no es multipart
   if (!isMultipart && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -17,13 +25,21 @@ async function request<T>(
     headers,
   });
 
+  // Manejo de errores
   if (!response.ok) {
     const text = await response.text();
+
+    // Si el token expiró
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+    }
+
     throw new Error(
       `HTTP ${response.status}: ${text || response.statusText || "Request failed"}`
     );
   }
 
+  // Respuesta sin contenido
   if (response.status === 204) {
     return undefined as T;
   }
@@ -32,7 +48,8 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T>(endpoint: string): Promise<T> => request<T>(endpoint, { method: "GET" }),
+  get: <T>(endpoint: string): Promise<T> =>
+    request<T>(endpoint, { method: "GET" }),
 
   post: <T>(endpoint: string, body?: JsonBody): Promise<T> =>
     request<T>(endpoint, {

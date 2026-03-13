@@ -4,6 +4,7 @@ Desarrollo: SQLite por defecto. Producción: PostgreSQL vía variables de entorn
 """
 import os
 from pathlib import Path
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,7 +24,10 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# Application definition
+# --------------------------------------------------
+# APPLICATIONS
+# --------------------------------------------------
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -31,25 +35,39 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     # Third party
     'rest_framework',
     'corsheaders',
+
     # Local
     'documental',
+    'accounts',
 ]
+
+# --------------------------------------------------
+# MIDDLEWARE
+# --------------------------------------------------
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+
     'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
+
+# --------------------------------------------------
+# TEMPLATES
+# --------------------------------------------------
 
 TEMPLATES = [
     {
@@ -69,8 +87,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Base de datos: PostgreSQL si GDOC_DB_ENGINE=postgresql, si no SQLite (desarrollo)
+# --------------------------------------------------
+# DATABASE
+# --------------------------------------------------
+
 db_engine = os.environ.get('GDOC_DB_ENGINE', 'sqlite')
+
 if db_engine == 'postgresql':
     DATABASES = {
         'default': {
@@ -90,6 +112,10 @@ else:
         }
     }
 
+# --------------------------------------------------
+# PASSWORD VALIDATORS
+# --------------------------------------------------
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -97,31 +123,75 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# --------------------------------------------------
+# INTERNATIONALIZATION
+# --------------------------------------------------
+
 LANGUAGE_CODE = 'es'
-TIME_ZONE = 'America/Argentina/Buenos_Aires'
+
+TIME_ZONE = 'America/Bogota'
+
 USE_I18N = True
 USE_TZ = True
+
+# --------------------------------------------------
+# STATIC FILES
+# --------------------------------------------------
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# --------------------------------------------------
+# MEDIA FILES
+# --------------------------------------------------
 
-# Media (archivos subidos)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Django REST Framework
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --------------------------------------------------
+# DJANGO REST FRAMEWORK
+# --------------------------------------------------
+
 REST_FRAMEWORK = {
+
+    # AUTENTICACIÓN JWT
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+
+    # PERMISOS (MVP)
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',  # MVP; luego restringir
+        'rest_framework.permissions.AllowAny',
     ],
+
+    # PAGINACIÓN
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 }
 
-# CORS: permitir frontend en desarrollo
-# El frontend React corre típicamente en http://localhost:5173 (Vite) o http://localhost:3000 (CRA)
+# --------------------------------------------------
+# SIMPLE JWT
+# --------------------------------------------------
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}
+
+# --------------------------------------------------
+# CORS
+# --------------------------------------------------
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:5173',
@@ -131,10 +201,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8080',
 ]
 
-# Para desarrollo: permitir credentials en CORS
 CORS_ALLOW_CREDENTIALS = True
 
-# Permite métodos HTTP comunes en CORS
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -144,7 +212,6 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# Permite headers comunes en CORS
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -157,10 +224,12 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# DEPRECATED pero lo dejamos para backward compatibility
+# Para desarrollo
 if DEBUG and os.environ.get('CORS_ALLOW_ALL', 'false').lower() in ('true', '1'):
     CORS_ALLOW_ALL_ORIGINS = True
 
-# OCR (Fase 3): ruta a Tesseract. En Windows suele ser necesario.
-# Ejemplo: TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+# --------------------------------------------------
+# OCR (FASE 3)
+# --------------------------------------------------
+
 TESSERACT_CMD = os.environ.get('TESSERACT_CMD', '')

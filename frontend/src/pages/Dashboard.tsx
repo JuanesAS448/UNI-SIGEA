@@ -33,7 +33,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Resumen general del sistema G-Doc IES</p>
+          <p className="text-sm text-muted-foreground">Resumen general del sistema UNI SIGEA</p>
         </div>
         {loadingStats && (
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
