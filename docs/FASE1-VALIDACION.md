@@ -2,12 +2,12 @@
 
 ## Resumen de lo construido
 
-| Componente | Ubicación | Descripción |
-|------------|-----------|-------------|
-| Proyecto Django | `backend/config/` | Settings, URLs, CORS, DRF |
-| App documental | `backend/documental/` | Endpoint `GET /api/health/` |
-| Frontend React | `frontend/src/` | Vite + React + TS, cliente API en `src/api/client.ts` |
-| Proxy | `frontend/vite.config.ts` | `/api` → `http://127.0.0.1:8000` |
+| Componente      | Ubicación                 | Descripción                                           |
+| --------------- | ------------------------- | ----------------------------------------------------- |
+| Proyecto Django | `backend/config/`         | Settings, URLs, CORS, DRF                             |
+| App documental  | `backend/documental/`     | Endpoint `GET /api/health/`                           |
+| Frontend React  | `frontend/src/`           | Vite + React + TS, cliente API en `src/api/client.ts` |
+| Proxy           | `frontend/vite.config.ts` | `/api` → `http://127.0.0.1:8000`                      |
 
 ## Pasos para validar (en tu máquina)
 
