@@ -1,7 +1,9 @@
 # UNI SIGEA - Documentación y Endpoints 
 <h2>
-  <img src="<img width="229" height="179" alt="Gemini_Generated_Image_b9g9c0b9g9c0b9g9-removebg-preview" src="https://github.com/user-attachments/assets/8698f256-59b1-4716-a0fd-d1677467f879" />
-" alt="Logo SIGEA" width="40" style="vertical-align: middle; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/8698f256-59b1-4716-a0fd-d1677467f879" 
+       alt="Logo SIGEA" 
+       width="40"
+       style="vertical-align: middle; margin-right: 10px;">
   UNI SIGEA - Documentación y Endpoints
 </h2>
 
