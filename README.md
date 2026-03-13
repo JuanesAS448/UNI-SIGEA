@@ -1,7 +1,7 @@
 <h2>
   <img src="https://github.com/user-attachments/assets/8698f256-59b1-4716-a0fd-d1677467f879"
        alt="Logo SIGEA"
-       width="35"
+       width="65"
        style="vertical-align: middle;">
   UNI SIGEA - Documentación y Endpoints
 </h2>
