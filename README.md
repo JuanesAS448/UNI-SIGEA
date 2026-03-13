@@ -1,4 +1,11 @@
-# UNI SIGEA - Documentación y Endpoints
+<h2 align="left">
+    <img src= "https://github.com/user-attachments/assets/518854b5-fac7-41ab-b355-3bbe083167be#
+       alt="Logo SIGEA"
+       width="80"
+       style="vertical-align: left;">
+  UNI SIGEA - Documentación y Endpoints
+
+</h2>
 
 Este archivo contiene la referencia sobre la estructura del proyecto, las principales funcionalidades del sistema, así como los endpoints (API de backend) y los enlaces a las vistas (Frontend) correspondientes a los diferentes CRUD.
 
