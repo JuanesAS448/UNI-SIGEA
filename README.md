@@ -108,3 +108,4 @@ La mayoría de estos endpoints están respaldados por el `DefaultRouter` de DRF,
 - **Health Check:** `GET /api/health/` (Verificar la salud y si se encuentra encendida la API).
 - **Alias Requisitos (Crear):** `POST /api/requisitos/` (Atajo para creación de documentos requeridos).
 - **Alias Postulantes (Crear):** `POST /api/postulantes/` (Atajo para creación de postulantes).
+
