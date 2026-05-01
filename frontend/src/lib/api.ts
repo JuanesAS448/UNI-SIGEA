@@ -63,6 +63,9 @@ export const apiClient = {
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
 
+  delete: <T>(endpoint: string): Promise<T> =>
+    request<T>(endpoint, { method: "DELETE" }),
+
   uploadFile: <T>(
     endpoint: string,
     file: File,

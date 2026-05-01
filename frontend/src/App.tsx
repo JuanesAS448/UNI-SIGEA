@@ -4,12 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// 1. IMPORTACIONES NUEVAS
-import { AuthProvider } from "@/contexts/AuthContext"; // Importamos el contexto copiado
-import Login from "./pages/Login"; // Importamos la página de login copiada
+import { AuthProvider } from "@/contexts/AuthContext";
+import Login from "./pages/Login";
 
 import { AppLayout } from "@/components/layout/AppLayout";
-import { PostulanteLayout } from "@/components/layout/PostulanteLayout";
 import Dashboard from "./pages/Dashboard";
 import Convocatorias from "./pages/Convocatorias";
 import ConvocatoriasArchivadas from "./pages/ConvocatoriasArchivadas";
@@ -26,19 +24,16 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    {/* 2. ENVOLVER CON EL PROVIDER */}
-    {/* Colocamos AuthProvider aquí para que el estado de sesión esté disponible en toda la app */}
     <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* 3. AÑADIR RUTA DE LOGIN */}
-            {/* Se coloca fuera de los Layouts porque el Login no debe llevar barra lateral o headers internos */}
+            {/* Login fuera del AppLayout (sin barra lateral) */}
             <Route path="/login" element={<Login />} />
 
-            {/* Rutas Protegidas (dentro de Layouts) */}
+            {/* Rutas Protegidas (dentro de AppLayout con barra lateral) */}
             <Route element={<AppLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/convocatorias" element={<Convocatorias />} />
@@ -47,12 +42,9 @@ const App = () => (
               <Route path="/convocatorias/:id" element={<ConvocatoriaDetalle />} />
               <Route path="/documentos" element={<Documentos />} />
               <Route path="/documentos/semaforo/:status" element={<SemaforoDocs />} />
+              <Route path="/portal-postulante" element={<PortalPostulante />} />
               <Route path="/expedientes" element={<Expedientes />} />
               <Route path="/usuarios" element={<Usuarios />} />
-            </Route>
-
-            <Route element={<PostulanteLayout />}>
-              <Route path="/portal-postulante" element={<PortalPostulante />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

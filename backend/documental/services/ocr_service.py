@@ -19,8 +19,8 @@ def _configurar_tesseract():
         if cmd:
             import pytesseract
             pytesseract.pytesseract.tesseract_cmd = cmd
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("Error al configurar tesseract: %s", e, exc_info=True)
 
 
 def extraer_texto_ocr(ruta_archivo: str) -> str:
@@ -40,8 +40,8 @@ def extraer_texto_ocr(ruta_archivo: str) -> str:
             return _ocr_pdf(ruta_archivo)
         return _ocr_imagen(ruta_archivo)
     except Exception as e:
-        logger.warning("OCR falló para %s: %s", ruta_archivo, e)
-        return ""
+        logger.error("OCR falló para %s: %s", ruta_archivo, e, exc_info=True)
+        raise e
 
 
 def _ocr_imagen(ruta_archivo: str) -> str:
@@ -62,8 +62,8 @@ def _ocr_imagen(ruta_archivo: str) -> str:
         texto = pytesseract.image_to_string(img, lang="spa+eng")
         return (texto or "").strip()
     except Exception as e:
-        logger.warning("OCR imagen falló: %s", e)
-        return ""
+        logger.error("OCR imagen falló: %s", e, exc_info=True)
+        raise e
 
 
 def _ocr_pdf(ruta_archivo: str) -> str:
@@ -93,5 +93,5 @@ def _ocr_pdf(ruta_archivo: str) -> str:
         doc.close()
         return "\n\n".join(textos) if textos else ""
     except Exception as e:
-        logger.warning("OCR PDF falló: %s", e)
-        return ""
+        logger.error("OCR PDF falló: %s", e, exc_info=True)
+        raise e

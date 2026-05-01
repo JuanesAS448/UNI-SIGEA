@@ -16,12 +16,18 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
 
+        try:
+            rol = user.perfil_documental.rol
+        except Exception:
+            rol = 'postulante'
+
         return Response({
             "id": user.id,
             "username": user.username,
             "email": user.email,
             "first_name": user.first_name,
-            "last_name": user.last_name
+            "last_name": user.last_name,
+            "rol": rol
         })
 
 class RegisterView(generics.CreateAPIView):

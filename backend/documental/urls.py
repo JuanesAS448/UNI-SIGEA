@@ -24,10 +24,6 @@ urlpatterns = [
     # Endpoint de salud
     path('health/', views.api_health, name='health'),
     
-    # Alias más intuitivos para front-end retrospectivo o documentación
-    path('requisitos/', views.DocumentoRequeridoViewSet.as_view({'post': 'create'}), name='requisitos-create'),
-    path('postulantes/', views.PostulanteViewSet.as_view({'post': 'create'}), name='postulantes-create'),
-    
     # Todos los endpoints CRUD del router
     path('', include(router.urls)),
 ]

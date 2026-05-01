@@ -6,6 +6,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator, RegexValidator
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
 
 
 class UsuarioPerfil(models.Model):
@@ -145,9 +146,11 @@ class Documento(models.Model):
     
     ESTADO_CHOICES = [
         ('pendiente', 'Pendiente'),
+        ('procesando', 'Procesando'),
         ('en_revision', 'En Revisión'),
         ('aprobado', 'Aprobado'),
         ('rechazado', 'Rechazado'),
+        ('error_procesamiento', 'Error de Procesamiento'),
     ]
     
     ESTADO_SEMAFORO_CHOICES = [
@@ -185,6 +188,7 @@ class Documento(models.Model):
     numero_documento_usuario = models.CharField(max_length=50, null=True, blank=True)
     
     fecha_carga = models.DateTimeField(auto_now_add=True)
+    history = HistoricalRecords()
     
     class Meta:
         ordering = ['-fecha_carga']
@@ -219,6 +223,7 @@ class Expediente(models.Model):
     estado = models.CharField(max_length=20, choices=STATUS_CHOICES, default='en_proceso')
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
+    history = HistoricalRecords()
     
     class Meta:
         ordering = ['-creado_en']

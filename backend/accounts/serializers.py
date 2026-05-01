@@ -41,4 +41,21 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         attrs["username"] = user.username
         attrs["password"] = password
 
-        return super().validate(attrs)
+        data = super().validate(attrs)
+        
+        # Añadir claims personalizados a la respuesta
+        try:
+            rol = user.perfil_documental.rol
+        except Exception:
+            rol = 'postulante' # Default fallback
+            
+        data.update({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "rol": rol
+        })
+
+        return data

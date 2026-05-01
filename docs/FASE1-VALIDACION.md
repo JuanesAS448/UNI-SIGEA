@@ -18,7 +18,7 @@ cd c:\Users\lball\Desktop\G-Doc\backend
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-python manage.py migrate
+python manage.py migrate ----- En caso de error, instalar django-cors-headers con pip install django-cors-headers
 python manage.py runserver
 ```
 

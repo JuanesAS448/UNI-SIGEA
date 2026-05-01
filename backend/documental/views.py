@@ -5,7 +5,7 @@ FASE 3: OCR al subir documento.
 FASE 4: Semáforo inteligente.
 """
 from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -23,6 +23,17 @@ from .serializers import (
 )
 from .services.ocr_service import extraer_texto_ocr
 from .services.semaforo_service import actualizar_estado_documento
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
+
+def ejecutar_procesamiento(documento_id):
+    from .services.documento_service import procesar_documento_async
+    try:
+        procesar_documento_async(documento_id)
+    except Exception as e:
+        logger.error(f"Error en hilo de procesamiento OCR: {e}", exc_info=True)
 
 
 @api_view(['GET'])
@@ -257,30 +268,14 @@ class DocumentoViewSet(viewsets.ModelViewSet):
                 from rest_framework.exceptions import ValidationError
                 raise ValidationError("No se pueden cargar documentos en una convocatoria cerrada o archivada.")
         
-        doc = serializer.save()
+        doc = serializer.save(estado='procesando')
         
-        # FASE 3: Extraer texto con OCR
-        try:
-            if doc.archivo:
-                ruta = doc.archivo.path
-                texto = extraer_texto_ocr(ruta)
-                if texto:
-                    doc.texto_extraido = texto
-        except Exception:
-            # Si el archivo no está en disco o OCR falla, continuar
-            pass
-        
-        # ====================================================================
-        # FASE 4: CALCULAR ESTADO DEL SEMÁFORO
-        # La lógica está en: documental/services/semaforo_service.py
-        # ====================================================================
-        actualizar_estado_documento(doc)
-        
-        # Guardar cambios
-        campos_a_actualizar = ['estado_semaforo']
-        if doc.texto_extraido:
-            campos_a_actualizar.append('texto_extraido')
-        doc.save(update_fields=campos_a_actualizar)
+        # Lanzar el proceso en segundo plano
+        threading.Thread(
+            target=ejecutar_procesamiento,
+            args=(doc.id,),
+            daemon=True
+        ).start()
     
     def perform_update(self, serializer):
         """
@@ -288,9 +283,12 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         ACTUALIZAR DOCUMENTO - RECALCULAR SEMÁFORO AL ACTUALIZAR
         ========================================================================
         """
-        doc = serializer.save()
-        actualizar_estado_documento(doc)
-        doc.save(update_fields=['estado_semaforo'])
+        doc = serializer.save(estado='procesando')
+        threading.Thread(
+            target=ejecutar_procesamiento,
+            args=(doc.id,),
+            daemon=True
+        ).start()
 
 
 class UsuarioPerfilViewSet(viewsets.ModelViewSet):
