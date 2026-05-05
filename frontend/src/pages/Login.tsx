@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,11 +43,11 @@ const LoginForm = () => {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="login-email">Correo electrónico</Label>
+            <Label htmlFor="login-email">Correo o usuario</Label>
             <Input
               id="login-email"
-              type="email"
-              placeholder="usuario@udec.edu.co"
+              type="text"
+              placeholder="usuario@udec.edu.co o Sustentacion"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -68,6 +68,11 @@ const LoginForm = () => {
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Ingresar
           </Button>
+          <p className="text-center text-sm">
+            <Link to="/recuperar-contrasena" className="text-primary underline-offset-4 hover:underline">
+              ¿Olvidó su contraseña?
+            </Link>
+          </p>
         </form>
       </CardContent>
     </Card>
@@ -89,7 +94,7 @@ const RegisterForm = () => {
       if (error) {
         toast.error(error);
       } else {
-        toast.success("Cuenta creada. Revisa tu correo para confirmar.");
+        toast.success("Cuenta creada. Sesión iniciada.");
       }
     } finally {
       setSubmitting(false);
@@ -144,6 +149,13 @@ const RegisterForm = () => {
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Crear Cuenta
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Elegirá su propia contraseña aquí. Si un administrador creó su usuario, use{" "}
+            <Link to="/recuperar-contrasena" className="text-primary underline-offset-4 hover:underline">
+              recuperar contraseña
+            </Link>{" "}
+            o cámbiela tras iniciar sesión en «Cambiar contraseña».
+          </p>
         </form>
       </CardContent>
     </Card>
@@ -151,7 +163,7 @@ const RegisterForm = () => {
 };
 
 const Login = () => {
-  const { session, role, loading } = useAuth();
+  const { session, loading } = useAuth();
 
   if (loading) {
     return (
@@ -161,8 +173,8 @@ const Login = () => {
     );
   }
 
-  if (session && role) {
-    return <Navigate to={role === "postulante" ? "/portal-postulante" : "/"} replace />;
+  if (session?.rol) {
+    return <Navigate to={session.rol === "postulante" ? "/portal-postulante" : "/"} replace />;
   }
 
   return (

@@ -231,6 +231,18 @@ if DEBUG and os.environ.get('CORS_ALLOW_ALL', 'false').lower() in ('true', '1'):
     CORS_ALLOW_ALL_ORIGINS = True
 
 # --------------------------------------------------
+# Correo (recuperación de contraseña). En desarrollo: consola.
+# Producción: EMAIL_BACKEND=smtp y variables SMTP en .env
+# --------------------------------------------------
+
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend',
+)
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SIGEA <noreply@localhost>')
+
+# --------------------------------------------------
 # OCR (FASE 3)
 # --------------------------------------------------
 

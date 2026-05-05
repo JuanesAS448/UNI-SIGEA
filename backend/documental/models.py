@@ -3,6 +3,7 @@ Modelos del módulo documental.
 FASE 1-2: Modelos completos para gestión de documentos, convocatorias, usuarios y expedientes.
 """
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator, RegexValidator
 from django.utils import timezone
@@ -96,8 +97,16 @@ class Convocatoria(models.Model):
     
     @property
     def postulantes_count(self):
-        """Cuenta de postulantes en esta convocatoria."""
-        return self.expedientes.values('postulante').distinct().count()
+        """Cuenta de postulantes (rol postulante o ficha manual) en esta convocatoria."""
+        return (
+            Postulante.objects.filter(
+                Q(usuario__isnull=True)
+                | Q(usuario__perfil_documental__rol="postulante"),
+                expedientes__convocatoria=self,
+            )
+            .distinct()
+            .count()
+        )
     
     @property
     def is_abierta(self):

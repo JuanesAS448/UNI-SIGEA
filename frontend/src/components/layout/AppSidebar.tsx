@@ -8,18 +8,25 @@ import {
   FolderCheck,
   LogOut,
   GraduationCap,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navItems = [
+const staffNavItems = [
   { label: "Dashboard",     icon: LayoutDashboard, href: "/" },
   { label: "Convocatorias", icon: ClipboardList,   href: "/convocatorias" },
   { label: "Archivadas",    icon: FolderCheck,     href: "/convocatorias/archivadas" },
-  { label: "Documentos",    icon: FileText,        href: "/documentos" },
-  { label: "Postulantes",   icon: GraduationCap,   href: "/portal-postulante" },
+  { label: "Documentación", icon: FileText,        href: "/documentos" },
   { label: "Expedientes",   icon: FolderCheck,     href: "/expedientes" },
+  { label: "Postulantes",   icon: GraduationCap,   href: "/portal-postulante" },
   { label: "Usuarios",      icon: Users,           href: "/usuarios" },
+  { label: "Cambiar contraseña", icon: KeyRound, href: "/cambiar-contrasena" },
+];
+
+const postulanteNavItems = [
+  { label: "Mi postulación", icon: GraduationCap, href: "/portal-postulante" },
+  { label: "Cambiar contraseña", icon: KeyRound, href: "/cambiar-contrasena" },
 ];
 
 export function AppSidebar() {
@@ -27,6 +34,9 @@ export function AppSidebar() {
   const navigate  = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const { session, signOut } = useAuth();
+
+  const navItems =
+    session?.rol === "postulante" ? postulanteNavItems : staffNavItems;
 
   const handleLogout = async () => {
     await signOut();
@@ -99,7 +109,7 @@ export function AppSidebar() {
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
               <p className="truncate text-xs text-muted-foreground capitalize">
-                {session ? "Sesión activa" : "Invitado"}
+                {session ? session.rol.replace("_", " ") : "Invitado"}
               </p>
             </div>
           )}

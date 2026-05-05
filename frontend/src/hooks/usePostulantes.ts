@@ -5,16 +5,16 @@
  * useCrearPostulante() → mutation POST
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { postulantesService } from "@/services/postulantesService";
+import { postulantesService, type PostulantesFiltros } from "@/services/postulantesService";
 import type { Postulante, PostulanteCreate } from "@/types/api";
 
 export const POSTULANTES_KEY = ["postulantes"] as const;
 
 // ── Lista ─────────────────────────────────────────────────────────────────────
-export function usePostulantes() {
+export function usePostulantes(filtros?: PostulantesFiltros) {
     return useQuery({
-        queryKey: POSTULANTES_KEY,
-        queryFn: postulantesService.getAll,
+        queryKey: [...POSTULANTES_KEY, filtros],
+        queryFn: () => postulantesService.getAll(filtros),
         staleTime: 30_000,
     });
 }
@@ -37,10 +37,9 @@ export function useActualizarPostulante() {
 
     return useMutation<Postulante, Error, {id: number; data: Partial<Postulante>}>({
         mutationFn: ({id,data}) => postulantesService.update(id,data),
-        onSuccess: (_, datos) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: POSTULANTES_KEY });
             queryClient.invalidateQueries({ queryKey: ["convocatorias"] });
-            queryClient.invalidateQueries({ queryKey: ["convocatorias", datos.id] });
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });
         },
     });

@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.exceptions import ValidationError
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
@@ -17,6 +18,7 @@ from .models import (
     Documento, Postulante, Convocatoria, DocumentoRequerido,
     UsuarioPerfil, Expediente
 )
+from .querysets import postulantes_con_rol_postulante
 from .serializers import (
     DocumentoSerializer, PostulanteSerializer, ConvocatoriaSerializer,
     DocumentoRequeridoSerializer, UsuarioPerfilSerializer, ExpedienteSerializer
@@ -27,6 +29,66 @@ import threading
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _queryset_convocatorias_según_usuario(queryset, user):
+    """Postulante autenticado: solo convocatorias donde tiene expediente."""
+    if not user.is_authenticated:
+        return queryset
+    try:
+        perfil = user.perfil_documental
+    except UsuarioPerfil.DoesNotExist:
+        return queryset
+    if perfil.rol != "postulante":
+        return queryset
+    try:
+        postulante = user.postulante
+    except Postulante.DoesNotExist:
+        return queryset.none()
+    return queryset.filter(expedientes__postulante=postulante).distinct()
+
+
+def _queryset_por_postulante_si_aplica(queryset, user, campo="postulante"):
+    """Postulante autenticado: solo registros de su propia ficha."""
+    if not user.is_authenticated:
+        return queryset
+    try:
+        perfil = user.perfil_documental
+    except UsuarioPerfil.DoesNotExist:
+        return queryset
+    if perfil.rol != "postulante":
+        return queryset
+    try:
+        postulante = user.postulante
+    except Postulante.DoesNotExist:
+        return queryset.none()
+    return queryset.filter(**{campo: postulante})
+
+
+def _validar_subida_documento_postulante(request, postulante, convocatoria, documento_requerido):
+    """Restringe cargas: expediente existente y requisito coherente con la convocatoria."""
+    if not request.user.is_authenticated:
+        return
+    try:
+        perfil = request.user.perfil_documental
+    except UsuarioPerfil.DoesNotExist:
+        return
+    if perfil.rol != "postulante":
+        return
+    try:
+        propio = request.user.postulante
+    except Postulante.DoesNotExist:
+        raise ValidationError("Su cuenta no tiene ficha de postulante.")
+    if postulante != propio:
+        raise ValidationError("Solo puede cargar documentos para su propio expediente.")
+    if convocatoria is None:
+        raise ValidationError("Debe indicar la convocatoria.")
+    if not Expediente.objects.filter(postulante=propio, convocatoria=convocatoria).exists():
+        raise ValidationError("No está inscrito en esta convocatoria.")
+    if documento_requerido is not None:
+        if documento_requerido.convocatoria_id != convocatoria.id:
+            raise ValidationError("El requisito no pertenece a esta convocatoria.")
+
 
 def ejecutar_procesamiento(documento_id):
     from .services.documento_service import procesar_documento_async
@@ -107,7 +169,7 @@ def dashboard_stats(request):
     convocatorias_cerradas = Convocatoria.objects.filter(estado='cerrada').count()
     
     # Contratos postulantes y expedientes
-    total_postulantes = Postulante.objects.filter(estado='activo').count()
+    total_postulantes = postulantes_con_rol_postulante().filter(estado='activo').count()
     expedientes_total = Expediente.objects.count()
     expedientes_completos = Expediente.objects.filter(estado='completo').count()
     expedientes_incompletos = Expediente.objects.filter(estado='incompleto').count()
@@ -157,12 +219,21 @@ class PostulanteViewSet(viewsets.ModelViewSet):
     - update: PUT /api/postulantes/{id}/
     - partial_update: PATCH /api/postulantes/{id}/
     - destroy: DELETE /api/postulantes/{id}/
+
+    Query params:
+    - excluir_convocatoria: id de convocatoria; omite postulantes que ya tienen expediente ahí.
     """
-    queryset = Postulante.objects.all()
     serializer_class = PostulanteSerializer
     permission_classes = [AllowAny]
     filterset_fields = ['estado', 'numero_documento']
     search_fields = ['nombres', 'apellidos', 'email', 'numero_documento']
+
+    def get_queryset(self):
+        qs = postulantes_con_rol_postulante()
+        conv_id = self.request.query_params.get('excluir_convocatoria')
+        if conv_id:
+            qs = qs.exclude(expedientes__convocatoria_id=conv_id)
+        return qs
 
 
 class ConvocatoriaViewSet(viewsets.ModelViewSet):
@@ -178,13 +249,16 @@ class ConvocatoriaViewSet(viewsets.ModelViewSet):
     - detalles: GET /api/convocatorias/{id}/detalles/
       (retorna la convocatoria con requisitos y postulantes anidados)
     """
-    queryset = Convocatoria.objects.all()
     serializer_class = ConvocatoriaSerializer
     permission_classes = [AllowAny]
     filterset_fields = ['estado', 'archivado']
     search_fields = ['titulo', 'descripcion']
     ordering_fields = ['fecha_inicio', 'fecha_fin']
     ordering = ['-fecha_inicio']
+
+    def get_queryset(self):
+        qs = Convocatoria.objects.all()
+        return _queryset_convocatorias_según_usuario(qs, self.request.user)
 
     @action(detail=True, methods=['get'], url_path='detalles')
     def detalles(self, request, pk=None):
@@ -232,7 +306,6 @@ class DocumentoViewSet(viewsets.ModelViewSet):
     - partial_update: PATCH /api/documentos/{id}/ (actualizar parcial)
     - destroy: DELETE /api/documentos/{id}/ (eliminar)
     """
-    queryset = Documento.objects.all()
     serializer_class = DocumentoSerializer
     permission_classes = [AllowAny]
     parser_classes = [MultiPartParser, FormParser]
@@ -240,6 +313,12 @@ class DocumentoViewSet(viewsets.ModelViewSet):
     search_fields = ['nombre_archivo', 'postulante__nombres', 'postulante__apellidos']
     ordering_fields = ['fecha_carga', 'confianza_ocr', 'estado']
     ordering = ['-fecha_carga']
+
+    def get_queryset(self):
+        qs = Documento.objects.select_related(
+            "postulante", "convocatoria", "documento_requerido"
+        ).all()
+        return _queryset_por_postulante_si_aplica(qs, self.request.user, "postulante")
     
     def get_serializer_context(self):
         """Añade el request al contexto del serializador para generar URLs absolutas."""
@@ -261,13 +340,18 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         4. Guarda texto_extraido y estado_semaforo
         ========================================================================
         """
-        # antes de guardar, validamos que la convocatoria permita cargas
         convocatoria = serializer.validated_data.get('convocatoria')
+        postulante = serializer.validated_data.get('postulante')
+        documento_requerido = serializer.validated_data.get('documento_requerido')
+
+        _validar_subida_documento_postulante(
+            self.request, postulante, convocatoria, documento_requerido
+        )
+
         if convocatoria and hasattr(convocatoria, 'estado'):
             if convocatoria.estado == 'cerrada' or getattr(convocatoria, 'archivado', False):
-                from rest_framework.exceptions import ValidationError
                 raise ValidationError("No se pueden cargar documentos en una convocatoria cerrada o archivada.")
-        
+
         doc = serializer.save(estado='procesando')
         
         # Lanzar el proceso en segundo plano
@@ -318,7 +402,6 @@ class ExpedienteViewSet(viewsets.ModelViewSet):
     - partial_update: PATCH /api/expedientes/{id}/
     - destroy: DELETE /api/expedientes/{id}/
     """
-    queryset = Expediente.objects.all()
     serializer_class = ExpedienteSerializer
     permission_classes = [AllowAny]
     filterset_fields = ['postulante', 'convocatoria', 'estado']
@@ -328,3 +411,7 @@ class ExpedienteViewSet(viewsets.ModelViewSet):
     ]
     ordering_fields = ['creado_en', 'actualizado_en']
     ordering = ['-creado_en']
+
+    def get_queryset(self):
+        qs = Expediente.objects.select_related("postulante", "convocatoria").all()
+        return _queryset_por_postulante_si_aplica(qs, self.request.user, "postulante")
