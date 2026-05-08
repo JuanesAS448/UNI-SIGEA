@@ -95,7 +95,11 @@ export default function ConvocatoriaDetalle() {
     if (editingReq) {
       // update existing
       actualizarReq.mutate(
-        { id: editingReq.id, data: { nombre: newReqNombre.trim(), descripcion: newReqDescripcion.trim(), obligatorio: newReqObligatorio } },
+        {
+          id: editingReq.id,
+          convocatoria: editingReq.convocatoria,
+          data: { nombre: newReqNombre.trim(), descripcion: newReqDescripcion.trim(), obligatorio: newReqObligatorio },
+        },
         {
           onSuccess: () => {
             toast({ title: "Requisito actualizado" });

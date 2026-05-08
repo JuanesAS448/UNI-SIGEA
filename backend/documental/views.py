@@ -25,6 +25,7 @@ from .serializers import (
 )
 from .services.ocr_service import extraer_texto_ocr
 from .services.semaforo_service import actualizar_estado_documento
+from .services.gemini_service import responder_consulta_documental
 import threading
 import logging
 
@@ -208,6 +209,33 @@ def dashboard_stats(request):
         'documentos_vencidos': documentos_vencidos,
         'documentos_por_vencer': documentos_por_vencer,
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def chatbot_documental(request):
+    """
+    Asistente documental disponible solo para usuarios con rol postulante.
+    No persiste conversaciones; responde una consulta puntual.
+    """
+    try:
+        perfil = request.user.perfil_documental
+    except UsuarioPerfil.DoesNotExist:
+        return Response({"detail": "Usuario sin perfil documental."}, status=403)
+
+    if perfil.rol != "postulante":
+        return Response({"detail": "Disponible solo para postulantes."}, status=403)
+
+    mensaje = request.data.get("message")
+    if not isinstance(mensaje, str) or not mensaje.strip():
+        return Response({"detail": "El mensaje es obligatorio."}, status=400)
+
+    mensaje = mensaje.strip()
+    if len(mensaje) > 500:
+        return Response({"detail": "El mensaje no puede superar 500 caracteres."}, status=400)
+
+    respuesta = responder_consulta_documental(mensaje)
+    return Response({"answer": respuesta})
 
 
 class PostulanteViewSet(viewsets.ModelViewSet):

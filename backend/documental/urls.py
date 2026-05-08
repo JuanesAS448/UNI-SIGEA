@@ -18,6 +18,9 @@ router.register(r'usuarios-perfil', views.UsuarioPerfilViewSet, basename='usuari
 router.register(r'expedientes', views.ExpedienteViewSet, basename='expediente')
 
 urlpatterns = [
+    # Chatbot documental del portal postulante
+    path('chatbot/', views.chatbot_documental, name='chatbot-documental'),
+
     # Endpoint especial para el dashboard (no es CRUD simple)
     path('dashboard/stats/', views.dashboard_stats, name='dashboard-stats'),
     

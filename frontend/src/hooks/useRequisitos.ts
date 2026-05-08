@@ -21,7 +21,7 @@ export function useCrearRequisito() {
 export function useActualizarRequisito() {
     const queryClient = useQueryClient();
 
-    return useMutation<DocumentoRequerido, Error, { id: number; data: Partial<DocumentoRequeridoCreate> }>(
+    return useMutation<DocumentoRequerido, Error, { id: number; convocatoria: number; data: Partial<DocumentoRequeridoCreate> }>(
         {
             mutationFn: ({ id, data }) => requisitosService.update(id, data),
             onSuccess: (_, datos) => {

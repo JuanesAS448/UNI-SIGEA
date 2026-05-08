@@ -15,6 +15,7 @@ import { SemaphoreBadge } from "@/components/SemaphoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { convocatoriasService } from "@/services/convocatoriasService";
+import { ChatBotDocumental } from "@/components/ChatBotDocumental";
 
 const estadoDocLabel: Record<string, string> = {
   pendiente: "Pendiente",
@@ -437,7 +438,12 @@ export default function PortalPostulante() {
   }
 
   if (session?.rol === "postulante") {
-    return <VistaPostulanteReal />;
+    return (
+      <>
+        <VistaPostulanteReal />
+        <ChatBotDocumental />
+      </>
+    );
   }
 
   return <VistaCatalogoPostulantes />;
