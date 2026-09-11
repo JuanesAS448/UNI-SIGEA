@@ -5,13 +5,25 @@
 import { apiClient } from "@/lib/api";
 import type { Postulante, PostulanteCreate, PaginatedResponse } from "@/types/api";
 
+export interface PostulantesFiltros {
+    excluir_convocatoria?: number;
+}
+
 export const postulantesService = {
     /**
-     * Lista todos los postulantes (paginado).
-     * GET /api/postulantes/
+     * Lista postulantes con rol postulante (paginado).
+     * GET /api/postulantes/?excluir_convocatoria=
      */
-    getAll: (): Promise<PaginatedResponse<Postulante>> =>
-        apiClient.get<PaginatedResponse<Postulante>>("/postulantes/"),
+    getAll: (filtros?: PostulantesFiltros): Promise<PaginatedResponse<Postulante>> => {
+        const params = new URLSearchParams();
+        if (filtros?.excluir_convocatoria != null) {
+            params.append("excluir_convocatoria", String(filtros.excluir_convocatoria));
+        }
+        const q = params.toString();
+        return apiClient.get<PaginatedResponse<Postulante>>(
+            `/postulantes/${q ? `?${q}` : ""}`
+        );
+    },
 
     /**
      * Obtiene un postulante por ID.

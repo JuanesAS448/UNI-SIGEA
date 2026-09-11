@@ -5,6 +5,7 @@
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { expedientesService, type ExpedientesFiltros } from "@/services/expedientesService";
+import { CONVOCATORIAS_KEY } from "@/hooks/useConvocatorias";
 
 export const EXPEDIENTES_KEY = ["expedientes"] as const;
 
@@ -22,11 +23,12 @@ export function useCrearExpediente() {
 
     return useMutation({
         mutationFn: expedientesService.create,
-        onSuccess: (_, datos) => {
-            // actualizar listas relevantes
+        onSuccess: (_created, variables) => {
             queryClient.invalidateQueries({ queryKey: EXPEDIENTES_KEY });
-            queryClient.invalidateQueries({ queryKey: ["convocatorias"] });
-            queryClient.invalidateQueries({ queryKey: ["convocatorias", datos.convocatoria] });
+            queryClient.invalidateQueries({ queryKey: CONVOCATORIAS_KEY });
+            queryClient.invalidateQueries({
+                queryKey: [...CONVOCATORIAS_KEY, variables.convocatoria],
+            });
         },
     });
 }

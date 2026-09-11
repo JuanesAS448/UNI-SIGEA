@@ -18,15 +18,14 @@ router.register(r'usuarios-perfil', views.UsuarioPerfilViewSet, basename='usuari
 router.register(r'expedientes', views.ExpedienteViewSet, basename='expediente')
 
 urlpatterns = [
+    # Chatbot documental del portal postulante
+    path('chatbot/', views.chatbot_documental, name='chatbot-documental'),
+
     # Endpoint especial para el dashboard (no es CRUD simple)
     path('dashboard/stats/', views.dashboard_stats, name='dashboard-stats'),
     
     # Endpoint de salud
     path('health/', views.api_health, name='health'),
-    
-    # Alias más intuitivos para front-end retrospectivo o documentación
-    path('requisitos/', views.DocumentoRequeridoViewSet.as_view({'post': 'create'}), name='requisitos-create'),
-    path('postulantes/', views.PostulanteViewSet.as_view({'post': 'create'}), name='postulantes-create'),
     
     # Todos los endpoints CRUD del router
     path('', include(router.urls)),

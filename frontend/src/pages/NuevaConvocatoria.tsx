@@ -180,9 +180,9 @@ export default function NuevaConvocatoria() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label>TÃ­tulo de la Convocatoria</Label>
+                  <Label>Titulo de la Convocatoria</Label>
                   <Input
-                    placeholder="Ej: Convocatoria Docentes CÃ¡tedra 2026-I"
+                    placeholder="Ej: Convocatoria Docentes Catedra 2026-I"
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}
                   />

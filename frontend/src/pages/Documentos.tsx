@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Search, Eye, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Search, Eye, CheckCircle, XCircle, Loader2, FolderCheck, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,15 +9,69 @@ import { Textarea } from "@/components/ui/textarea";
 import { SemaphoreBadge } from "@/components/SemaphoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useDocumentos, useActualizarDocumento } from "@/hooks/useDocumentos";
-import type { Documento } from "@/types/api";
+import { useExpedientes } from "@/hooks/useExpedientes";
+import type { Documento, Expediente } from "@/types/api";
 import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+
+const expedienteStatusConfig = {
+  completo: { label: "Completo", icon: CheckCircle, className: "text-success" },
+  en_proceso: { label: "En Proceso", icon: Clock, className: "text-info" },
+  incompleto: { label: "Incompleto", icon: AlertCircle, className: "text-destructive" },
+} as const;
+
+function ExpedienteCard({ expediente }: { expediente: Expediente }) {
+  const progress = Math.round(expediente.progreso_porcentaje);
+  const config = expedienteStatusConfig[expediente.estado] ?? expedienteStatusConfig["en_proceso"];
+  const Icon = config.icon;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="mb-4 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <FolderCheck className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-card-foreground">
+              {expediente.postulante_nombre} {expediente.postulante_apellidos}
+            </h3>
+            <p className="text-xs text-muted-foreground">{expediente.convocatoria_titulo}</p>
+          </div>
+        </div>
+        <Icon className={cn("h-5 w-5", config.className)} />
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">Progreso</span>
+          <span className="font-medium text-foreground">
+            {expediente.documentos_aprobados_count}/{expediente.documentos_count}
+          </span>
+        </div>
+        <Progress value={progress} className="h-2" />
+        <p className={cn("text-xs font-medium", config.className)}>{config.label}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Documentos() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mainTab = searchParams.get("tab") === "expedientes" ? "expedientes" : "documentos";
+
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Documento | null>(null);
   const [observacion, setObservacion] = useState("");
 
   const { data, isLoading, isError } = useDocumentos();
+  const {
+    data: expData,
+    isLoading: expLoading,
+    isError: expError,
+  } = useExpedientes();
   const actualizarMutation = useActualizarDocumento();
 
   const documentos = data?.results ?? [];
@@ -56,15 +111,31 @@ export default function Documentos() {
     );
   };
 
+  const expedientes = expData?.results ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Documentos</h1>
-          <p className="text-sm text-muted-foreground">Revisión y validación documental</p>
+          <h1 className="text-2xl font-bold text-foreground">Documentación</h1>
+          <p className="text-sm text-muted-foreground">Expedientes por convocatoria y revisión de archivos</p>
         </div>
       </div>
 
+      <Tabs
+        value={mainTab}
+        onValueChange={(v) => {
+          if (v === "expedientes") setSearchParams({ tab: "expedientes" });
+          else setSearchParams({});
+        }}
+        className="w-full"
+      >
+        <TabsList>
+          <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="expedientes">Expedientes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="documentos" className="mt-6 space-y-6">
       {/* Search */}
       <div className="flex gap-3">
         <div className="relative flex-1">
@@ -275,6 +346,33 @@ export default function Documentos() {
           )}
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="expedientes" className="mt-6 space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Vista consolidada por postulante y convocatoria. El detalle y la validación de cada archivo están en la pestaña Documentos o en el detalle de la convocatoria.
+          </p>
+          {expLoading ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>Cargando expedientes...</span>
+            </div>
+          ) : expError ? (
+            <p className="py-16 text-center text-sm text-destructive">Error al cargar expedientes.</p>
+          ) : expedientes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-16 text-center">
+              <FolderCheck className="mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="text-sm font-medium text-muted-foreground">No hay expedientes aún</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {expedientes.map((exp) => (
+                <ExpedienteCard key={exp.id} expediente={exp} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
