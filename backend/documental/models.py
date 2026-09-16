@@ -114,6 +114,7 @@ class DocumentoRequerido(models.Model):
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField()
     obligatorio = models.BooleanField(default=True)
+    requiere_validacion_ia = models.BooleanField(default=False, help_text='Indica si este documento debe enviarse a Power Automate')
     
     class Meta:
         verbose_name = 'Documento Requerido'

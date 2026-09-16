@@ -47,7 +47,7 @@ class DocumentoRequeridoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentoRequerido
         fields = [
-            'id', 'nombre', 'descripcion', 'obligatorio',
+            'id', 'nombre', 'descripcion', 'obligatorio', 'requiere_validacion_ia',
             'convocatoria', 'subido_por', 'documentos_count'
         ]
         read_only_fields = ['id', 'subido_por', 'documentos_count']

@@ -23,6 +23,8 @@ from .serializers import (
 )
 from .services.ocr_service import extraer_texto_ocr
 from .services.semaforo_service import actualizar_estado_documento
+from .services import enviar_documento_a_power_automate
+from django.conf import settings
 import threading
 import logging
 
