@@ -1,18 +1,31 @@
-import { createContext, useContext, ReactNode, useState, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  ReactNode,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import { apiClient } from "@/lib/api";
 
-interface User {
+export type RolDocumental = "admin" | "revisor" | "postulante";
+
+export interface SessionUser {
   id: number;
   email: string;
-  role: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  rol: RolDocumental;
+  postulante_id: number | null;
 }
 
 interface AuthContextType {
-  session: User | null;
-  role: string | null;
+  session: SessionUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<string | null>;
   signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -24,12 +37,22 @@ export const useAuth = () => {
   return context;
 };
 
+function mapMePayload(data: Record<string, unknown>): SessionUser {
+  return {
+    id: data.id as number,
+    email: (data.email as string) ?? "",
+    username: data.username as string | undefined,
+    first_name: data.first_name as string | undefined,
+    last_name: data.last_name as string | undefined,
+    rol: (data.rol as RolDocumental) ?? "postulante",
+    postulante_id: (data.postulante_id as number | null) ?? null,
+  };
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [session, setSession] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [session, setSession] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // verificar sesión al cargar la app
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -39,10 +62,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     apiClient
-      .get<User>("/auth/me/")
-      .then((user) => {
-        setSession(user);
-        setRole(user.role);
+      .get<Record<string, unknown>>("/auth/me/")
+      .then((data) => {
+        setSession(mapMePayload(data));
       })
       .catch(() => {
         localStorage.removeItem("token");
@@ -50,57 +72,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .finally(() => setLoading(false));
   }, []);
 
-  const signIn = async (username: string, password: string): Promise<string | null> => {
+  const signIn = useCallback(async (email: string, password: string): Promise<string | null> => {
     try {
-      const data = await apiClient.post<{
-        access: string;
-        user: User;
-      }>("/auth/login/", {
-        username,
+      const data = await apiClient.post<Record<string, unknown>>("/auth/login/", {
+        email,
         password,
       });
 
-      localStorage.setItem("token", data.access);
+      localStorage.setItem("token", data.access as string);
 
-      setSession(data.user);
-      setRole(data.user.role);
+      setSession(mapMePayload(data));
 
       return null;
-    } catch (error: any) {
+    } catch {
       return "Credenciales incorrectas";
     }
-  };
+  }, []);
 
-  const signUp = async (
-    email: string,
-    password: string,
-    fullName: string
-  ): Promise<string | null> => {
+  /**
+   * Registro: el backend devuelve JWT en la misma respuesta (no hace falta un segundo login).
+   */
+  const signUp = useCallback(async (email: string, password: string, fullName: string): Promise<string | null> => {
     try {
-      await apiClient.post("/auth/register/", {
+      const data = await apiClient.post<Record<string, unknown>>("/auth/register/", {
         email,
         password,
         full_name: fullName,
       });
 
-      return null;
-    } catch (error: any) {
-      return "Error al registrar usuario";
-    }
-  };
+      const access = data.access as string | undefined;
+      if (!access) {
+        return "El servidor no devolvió sesión. Intente iniciar sesión manualmente.";
+      }
 
-  const signOut = async () => {
+      localStorage.setItem("token", access);
+      setSession(mapMePayload(data));
+      return null;
+    } catch {
+      return "No se pudo registrar. Verifique el correo (único) y los datos.";
+    }
+  }, []);
+
+  const changePassword = useCallback(async (oldPassword: string, newPassword: string): Promise<string | null> => {
+    try {
+      await apiClient.post("/auth/change-password/", {
+        old_password: oldPassword,
+        new_password: newPassword,
+      });
+      return null;
+    } catch {
+      return "No se pudo cambiar la contraseña. Revise la contraseña actual.";
+    }
+  }, []);
+
+  const signOut = useCallback(async () => {
     localStorage.removeItem("token");
     setSession(null);
-    setRole(null);
-  };
+  }, []);
 
   const value: AuthContextType = {
     session,
-    role,
     loading,
     signIn,
     signUp,
+    changePassword,
     signOut,
   };
 

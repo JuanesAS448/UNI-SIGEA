@@ -10,6 +10,7 @@ from .models import (
     Documento, Postulante, Convocatoria, DocumentoRequerido,
     UsuarioPerfil, Expediente
 )
+from .querysets import postulantes_con_rol_postulante
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -54,9 +55,13 @@ class DocumentoRequeridoSerializer(serializers.ModelSerializer):
     
     def get_subido_por(self, obj):
         # buscamos postulantes únicos que tienen un Documento vinculado a este requisito
-        postulantes = obj.documentos_cargados.select_related('postulante').values(
-            'postulante', 'postulante__nombres', 'postulante__apellidos'
-        ).distinct()
+        elegibles = postulantes_con_rol_postulante().values_list("pk", flat=True)
+        postulantes = (
+            obj.documentos_cargados.filter(postulante_id__in=elegibles)
+            .select_related("postulante")
+            .values("postulante", "postulante__nombres", "postulante__apellidos")
+            .distinct()
+        )
         return [
             {
                 'id': p['postulante'],
@@ -107,7 +112,7 @@ class ConvocatoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Convocatoria
         fields = [
-            'id', 'titulo', 'descripcion', 'estado', 'archivado', 'archivado', 'fecha_inicio',
+            'id', 'titulo', 'descripcion', 'estado', 'archivado', 'fecha_inicio',
             'fecha_fin', 'documentos_requeridos', 'postulantes',
             'postulantes_count', 'is_abierta', 'creado_en', 'actualizado_en'
         ]
@@ -115,8 +120,9 @@ class ConvocatoriaSerializer(serializers.ModelSerializer):
     
     def get_postulantes(self, obj):
         """Devuelve la lista de postulantes que tienen un expediente en la convocatoria."""
-        # usamos distinct para evitar duplicados en caso de algún dato extraño
-        postulantes_qs = Postulante.objects.filter(expedientes__convocatoria=obj).distinct()
+        postulantes_qs = postulantes_con_rol_postulante().filter(
+            expedientes__convocatoria=obj
+        ).distinct()
         return PostulanteSerializer(postulantes_qs, many=True).data
 
     def get_postulantes_count(self, obj):

@@ -13,7 +13,14 @@ try:
     from dotenv import load_dotenv
     load_dotenv(BASE_DIR / '.env')
 except ImportError:
-    pass
+    env_path = BASE_DIR / '.env'
+    if env_path.exists():
+        for line in env_path.read_text(encoding='utf-8').splitlines():
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 SECRET_KEY = os.environ.get(
     'DJANGO_SECRET_KEY',
@@ -229,6 +236,18 @@ CORS_ALLOW_HEADERS = [
 # Para desarrollo
 if DEBUG and os.environ.get('CORS_ALLOW_ALL', 'false').lower() in ('true', '1'):
     CORS_ALLOW_ALL_ORIGINS = True
+
+# --------------------------------------------------
+# Correo (recuperación de contraseña). En desarrollo: consola.
+# Producción: EMAIL_BACKEND=smtp y variables SMTP en .env
+# --------------------------------------------------
+
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend',
+)
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'SIGEA <noreply@localhost>')
 
 # --------------------------------------------------
 # OCR (FASE 3)

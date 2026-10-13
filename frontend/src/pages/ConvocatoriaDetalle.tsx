@@ -13,12 +13,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useConvocatoria, useActualizarConvocatoria } from "@/hooks/useConvocatorias";
 import { useCrearRequisito, useActualizarRequisito, useEliminarRequisito } from "@/hooks/useRequisitos";
-import { useCrearPostulante, useActualizarPostulante } from "@/hooks/usePostulantes";
+import { useCrearPostulante, useActualizarPostulante, usePostulantes } from "@/hooks/usePostulantes";
 import type { DocumentoRequerido } from "@/types/api";
 import { useCrearExpediente } from "@/hooks/useExpedientes";
 import { useDocumentos, useActualizarDocumento } from "@/hooks/useDocumentos";
 import type { Documento } from "@/types/api";
 import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ConvocatoriaDetalle() {
   const navigate = useNavigate();
@@ -54,6 +55,12 @@ export default function ConvocatoriaDetalle() {
   const crearExp = useCrearExpediente();
   const actualizarPost = useActualizarPostulante();
 
+  const { data: postulantesElegibles } = usePostulantes(
+    convocatoriaId ? { excluir_convocatoria: convocatoriaId } : undefined
+  );
+  const [postSearch, setPostSearch] = useState("");
+  const [selectedPostulanteId, setSelectedPostulanteId] = useState<number | null>(null);
+
   // documento modal para requisitos
   const [docsSearch, setDocsSearch] = useState("");
   const [selectedReq, setSelectedReq] = useState<DocumentoRequerido | null>(null);
@@ -88,7 +95,11 @@ export default function ConvocatoriaDetalle() {
     if (editingReq) {
       // update existing
       actualizarReq.mutate(
-        { id: editingReq.id, data: { nombre: newReqNombre.trim(), descripcion: newReqDescripcion.trim(), obligatorio: newReqObligatorio } },
+        {
+          id: editingReq.id,
+          convocatoria: editingReq.convocatoria,
+          data: { nombre: newReqNombre.trim(), descripcion: newReqDescripcion.trim(), obligatorio: newReqObligatorio },
+        },
         {
           onSuccess: () => {
             toast({ title: "Requisito actualizado" });
@@ -139,7 +150,6 @@ export default function ConvocatoriaDetalle() {
     if (!convocatoriaId) return;
     crearPost.mutate(newPost, {
       onSuccess: (p) => {
-        // luego creamos expediente enlazado
         crearExp.mutate(
           { postulante: p.id, convocatoria: convocatoriaId },
           {
@@ -156,6 +166,37 @@ export default function ConvocatoriaDetalle() {
       },
     });
   };
+
+  const handleAsignarExistente = () => {
+    if (!convocatoriaId || !selectedPostulanteId) {
+      toast({ title: "Seleccione un postulante", variant: "destructive" });
+      return;
+    }
+    crearExp.mutate(
+      { postulante: selectedPostulanteId, convocatoria: convocatoriaId },
+      {
+        onSuccess: () => {
+          toast({ title: "Postulante asignado a la convocatoria" });
+          setPostDialogOpen(false);
+          setSelectedPostulanteId(null);
+          setPostSearch("");
+        },
+        onError: () => {
+          toast({ title: "No se pudo asignar (¿ya tiene expediente?)", variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const listaElegibles = (postulantesElegibles?.results ?? []).filter((p) => {
+    const q = postSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      `${p.nombres} ${p.apellidos}`.toLowerCase().includes(q) ||
+      p.email.toLowerCase().includes(q) ||
+      p.numero_documento.includes(q)
+    );
+  });
 
   const toggleEstado = (pId: number, current: string) => {
     const nuevo = current === "activo" ? "inactivo" : "activo";
@@ -368,7 +409,7 @@ export default function ConvocatoriaDetalle() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Postulantes</h2>
             <Button variant="outline" size="sm" className="text-green-600" onClick={() => setPostDialogOpen(true)} disabled={data?.estado !== "abierta" || data?.archivado}>
-              + Registrar Nuevo Postulante
+              + Agregar postulante
             </Button>
           </div>
           {data.postulantes && data.postulantes.length > 0 ? (
@@ -446,59 +487,119 @@ export default function ConvocatoriaDetalle() {
         </Dialog>
 
         {/* Postulante modal */}
-        <Dialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
-          <DialogContent className="max-w-md">
+        <Dialog
+          open={postDialogOpen}
+          onOpenChange={(open) => {
+            setPostDialogOpen(open);
+            if (!open) {
+              setSelectedPostulanteId(null);
+              setPostSearch("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Registrar Postulante</DialogTitle>
+              <DialogTitle>Agregar postulante a la convocatoria</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Nombres</Label>
-                <Input
-                  value={newPost.nombres}
-                  onChange={(e) => setNewPost({ ...newPost, nombres: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Apellidos</Label>
-                <Input
-                  value={newPost.apellidos}
-                  onChange={(e) => setNewPost({ ...newPost, apellidos: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Documento</Label>
-                <Input
-                  value={newPost.numero_documento}
-                  onChange={(e) => setNewPost({ ...newPost, numero_documento: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Correo</Label>
-                <Input
-                  type="email"
-                  value={newPost.email}
-                  onChange={(e) => setNewPost({ ...newPost, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Teléfono</Label>
-                <Input
-                  value={newPost.telefono}
-                  onChange={(e) => setNewPost({ ...newPost, telefono: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Dirección</Label>
-                <Input
-                  value={newPost.direccion}
-                  onChange={(e) => setNewPost({ ...newPost, direccion: e.target.value })}
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleAddPost}>Guardar</Button>
-              </div>
-            </div>
+            <Tabs defaultValue="existente" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="existente">Usuario ya registrado</TabsTrigger>
+                <TabsTrigger value="nuevo">Nueva ficha manual</TabsTrigger>
+              </TabsList>
+              <TabsContent value="existente" className="space-y-4 pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Solo aparecen usuarios con rol <strong>postulante</strong> que aún no tienen expediente en esta convocatoria
+                  (incluye cuentas creadas desde el admin de Django).
+                </p>
+                <div>
+                  <Label>Buscar</Label>
+                  <Input
+                    placeholder="Nombre, correo o documento..."
+                    value={postSearch}
+                    onChange={(e) => setPostSearch(e.target.value)}
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto rounded-md border border-border">
+                  {listaElegibles.length === 0 ? (
+                    <p className="p-3 text-xs text-muted-foreground">No hay coincidencias o todos ya están en esta convocatoria.</p>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {listaElegibles.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent ${selectedPostulanteId === p.id ? "bg-accent" : ""}`}
+                            onClick={() => setSelectedPostulanteId(p.id)}
+                          >
+                            <span className="font-medium text-foreground">
+                              {p.nombres} {p.apellidos}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{p.email} · {p.numero_documento}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleAsignarExistente} disabled={!selectedPostulanteId}>
+                    Asignar a convocatoria
+                  </Button>
+                </div>
+              </TabsContent>
+              <TabsContent value="nuevo" className="space-y-4 pt-4">
+                <p className="text-xs text-muted-foreground">
+                  Cree una ficha sin cuenta de usuario (casos excepcionales). Si la persona ya tiene usuario en el sistema,
+                  use la pestaña anterior.
+                </p>
+                <div>
+                  <Label>Nombres</Label>
+                  <Input
+                    value={newPost.nombres}
+                    onChange={(e) => setNewPost({ ...newPost, nombres: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Apellidos</Label>
+                  <Input
+                    value={newPost.apellidos}
+                    onChange={(e) => setNewPost({ ...newPost, apellidos: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Documento</Label>
+                  <Input
+                    value={newPost.numero_documento}
+                    onChange={(e) => setNewPost({ ...newPost, numero_documento: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Correo</Label>
+                  <Input
+                    type="email"
+                    value={newPost.email}
+                    onChange={(e) => setNewPost({ ...newPost, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Teléfono</Label>
+                  <Input
+                    value={newPost.telefono}
+                    onChange={(e) => setNewPost({ ...newPost, telefono: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Dirección</Label>
+                  <Input
+                    value={newPost.direccion}
+                    onChange={(e) => setNewPost({ ...newPost, direccion: e.target.value })}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleAddPost}>Guardar y asignar</Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
 

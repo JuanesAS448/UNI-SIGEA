@@ -6,7 +6,9 @@
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { documentosService, type DocumentosFiltros } from "@/services/documentosService";
-import type { Documento, DocumentoActualizacion } from "@/types/api";
+import type { Documento, DocumentoActualizacion, DocumentoUploadData } from "@/types/api";
+import { EXPEDIENTES_KEY } from "@/hooks/useExpedientes";
+import { CONVOCATORIAS_KEY } from "@/hooks/useConvocatorias";
 
 export const DOCUMENTOS_KEY = ["documentos"] as const;
 
@@ -37,6 +39,20 @@ export function useActualizarDocumento() {
         onSuccess: () => {
             // Invalida la lista y el dashboard para que se recarguen automáticamente
             queryClient.invalidateQueries({ queryKey: DOCUMENTOS_KEY });
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+    });
+}
+
+export function useSubirDocumento() {
+    const queryClient = useQueryClient();
+
+    return useMutation<Documento, Error, DocumentoUploadData>({
+        mutationFn: (data) => documentosService.subir(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: DOCUMENTOS_KEY });
+            queryClient.invalidateQueries({ queryKey: EXPEDIENTES_KEY });
+            queryClient.invalidateQueries({ queryKey: CONVOCATORIAS_KEY });
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });
         },
     });
