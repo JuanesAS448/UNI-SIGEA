@@ -29,14 +29,9 @@ from .serializers import (
 )
 from .services.ocr_service import extraer_texto_ocr
 from .services.semaforo_service import actualizar_estado_documento
-<<<<<<< Updated upstream
-from .services import enviar_documento_a_power_automate
-from django.conf import settings
-=======
 from .services.gemini_service import responder_consulta_documental
 from .services.power_automate import enviar_documento, PowerAutomateError
 from .services.identidad_service import evaluar_estado_identidad
->>>>>>> Stashed changes
 import threading
 import logging
 
