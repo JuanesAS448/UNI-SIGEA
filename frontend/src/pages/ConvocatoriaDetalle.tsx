@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { SemaphoreBadge } from "@/components/SemaphoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { EliminarDocumentoButton } from "@/components/EliminarDocumentoButton";
+import { ExtraccionDocumento } from "@/components/ExtraccionDocumento";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -614,7 +616,7 @@ export default function ConvocatoriaDetalle() {
             }
           }}
         >
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Documentos para requisito: {selectedReq?.nombre}
@@ -662,7 +664,7 @@ export default function ConvocatoriaDetalle() {
                           <th className="px-6 py-3">Postulante</th>
                           <th className="px-6 py-3">Estado</th>
                           <th className="px-6 py-3">Semáforo</th>
-                          <th className="px-6 py-3">Confianza OCR</th>
+                          <th className="px-6 py-3">Confianza</th>
                           <th className="px-6 py-3">Validación</th>
                           <th className="px-6 py-3">Acciones</th>
                         </tr>
@@ -684,15 +686,7 @@ export default function ConvocatoriaDetalle() {
                             <td className="px-6 py-4"><StatusBadge status={doc.estado} /></td>
                             <td className="px-6 py-4"><SemaphoreBadge status={doc.estado_semaforo} /></td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 w-16 rounded-full bg-border">
-                                  <div
-                                    className="h-2 rounded-full bg-primary transition-all"
-                                    style={{ width: `${doc.confianza_ocr}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-muted-foreground">{doc.confianza_ocr}%</span>
-                              </div>
+                              <ExtraccionDocumento documento={doc} />
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-xs capitalize text-muted-foreground">{doc.tipo_validacion}</span>
@@ -705,6 +699,7 @@ export default function ConvocatoriaDetalle() {
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
+                                <EliminarDocumentoButton documento={doc} onDeleted={() => setSelectedDoc((current) => current?.id === doc.id ? null : current)} />
                                 {(doc.estado === "pendiente" || doc.estado === "en_revision") && (
                                   <>
                                     <Button
@@ -737,7 +732,7 @@ export default function ConvocatoriaDetalle() {
 
               {/* detail dialog for doc inside req modal */}
               <Dialog open={!!selectedDoc} onOpenChange={(o) => !o && setSelectedDoc(null)}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Detalle del Documento</DialogTitle>
                   </DialogHeader>
@@ -766,8 +761,8 @@ export default function ConvocatoriaDetalle() {
                           <div className="mt-1"><SemaphoreBadge status={selectedDoc.estado_semaforo} /></div>
                         </div>
                         <div>
-                          <Label className="text-muted-foreground">Confianza OCR</Label>
-                          <p className="text-sm font-medium text-foreground">{selectedDoc.confianza_ocr}%</p>
+                          <Label className="text-muted-foreground">Confianza</Label>
+                          <ExtraccionDocumento documento={selectedDoc} />
                         </div>
                         <div>
                           <Label className="text-muted-foreground">Tipo Validación</Label>

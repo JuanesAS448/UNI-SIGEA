@@ -47,6 +47,9 @@ export const documentosService = {
     getById: (id: number): Promise<Documento> =>
         apiClient.get<Documento>(`/documentos/${id}/`),
 
+    eliminar: (id: number): Promise<void> =>
+        apiClient.delete<void>(`/documentos/${id}/`),
+
     /**
      * Sube un documento al servidor (multipart/form-data).
      * El campo del archivo en Django es "archivo", no "file".

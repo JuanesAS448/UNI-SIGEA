@@ -29,7 +29,11 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+    if host.strip()
+]
 
 # --------------------------------------------------
 # APPLICATIONS
@@ -59,6 +63,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Sirve los estáticos (admin de Django) también con DEBUG=False
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
 
     'corsheaders.middleware.CorsMiddleware',
@@ -100,9 +106,21 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # DATABASE
 # --------------------------------------------------
 
-db_engine = os.environ.get('GDOC_DB_ENGINE', 'sqlite')
+db_engine = os.environ.get('GDOC_DB_ENGINE', 'sqlite').strip().lower()
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 
-if db_engine == 'postgresql':
+if DATABASE_URL:
+    # Render, Railway, Neon y Supabase entregan una única URL de conexión.
+    import dj_database_url
+
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif db_engine in ('postgresql', 'postgres'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -111,6 +129,7 @@ if db_engine == 'postgresql':
             'PASSWORD': os.environ.get('GDOC_DB_PASSWORD', ''),
             'HOST': os.environ.get('GDOC_DB_HOST', 'localhost'),
             'PORT': os.environ.get('GDOC_DB_PORT', '5432'),
+            'CONN_MAX_AGE': 600,
         }
     }
 else:
@@ -150,12 +169,39 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+# WhiteNoise comprime y sirve los estáticos sin depender de nginx.
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
+
 # --------------------------------------------------
 # MEDIA FILES
 # --------------------------------------------------
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Carga documental mediante el flujo existente. Alias para instalaciones previas.
+POWER_AUTOMATE_UPLOAD_URL = os.environ.get('POWER_AUTOMATE_UPLOAD_URL') or os.environ.get('POWER_AUTOMATE_URL', '')
+POWER_AUTOMATE_UPLOAD_TIMEOUT = float(os.environ.get('POWER_AUTOMATE_UPLOAD_TIMEOUT', '30'))
+POWER_AUTOMATE_BEARER_TOKEN = os.environ.get('POWER_AUTOMATE_BEARER_TOKEN', '')
+POWER_AUTOMATE_IDENTITY_UPLOAD_URL = os.environ.get('POWER_AUTOMATE_IDENTITY_UPLOAD_URL', '')
+POWER_AUTOMATE_IDENTITY_REQUIREMENT_IDS = frozenset(
+    int(value.strip())
+    for value in os.environ.get('POWER_AUTOMATE_IDENTITY_REQUIREMENT_IDS', '').split(',')
+    if value.strip()
+)
+POWER_AUTOMATE_IDENTITY_TIMEOUT = float(os.environ.get('POWER_AUTOMATE_IDENTITY_TIMEOUT', '90'))
+DOCUMENT_UPLOAD_MAX_BYTES = int(os.environ.get('DOCUMENT_UPLOAD_MAX_BYTES', str(10 * 1024 * 1024)))
+if POWER_AUTOMATE_UPLOAD_TIMEOUT <= 0 or POWER_AUTOMATE_IDENTITY_TIMEOUT <= 0 or DOCUMENT_UPLOAD_MAX_BYTES <= 0:
+    raise ValueError('El timeout y el tamaño máximo de carga deben ser positivos.')
+if any(value <= 0 for value in POWER_AUTOMATE_IDENTITY_REQUIREMENT_IDS):
+    raise ValueError('Los ID de requisitos de identidad deben ser positivos.')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -201,14 +247,21 @@ SIMPLE_JWT = {
 # CORS
 # --------------------------------------------------
 
+# En producción define, por ejemplo:
+# CORS_ALLOWED_ORIGINS=https://tu-proyecto.vercel.app
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
+    origin.strip()
+    for origin in os.environ.get(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,'
+        'http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080',
+    ).split(',')
+    if origin.strip()
 ]
+
+# Permite los dominios de preview de Vercel (*.vercel.app) si se activa.
+if os.environ.get('CORS_ALLOW_VERCEL_PREVIEWS', 'false').lower() in ('true', '1', 'yes'):
+    CORS_ALLOWED_ORIGIN_REGEXES = [r'^https://[\w-]+\.vercel\.app$']
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -233,9 +286,24 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# Dominios de confianza para el admin de Django y formularios con CSRF.
+# En producción incluye el dominio del backend, p. ej. https://mi-api.onrender.com
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
 # Para desarrollo
 if DEBUG and os.environ.get('CORS_ALLOW_ALL', 'false').lower() in ('true', '1'):
     CORS_ALLOW_ALL_ORIGINS = True
+
+# Detrás del proxy HTTPS de Render/Railway.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # --------------------------------------------------
 # Correo (recuperación de contraseña). En desarrollo: consola.

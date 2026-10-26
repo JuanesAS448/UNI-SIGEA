@@ -6,11 +6,15 @@ FASE 4: Semáforo inteligente.
 """
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, APIException, PermissionDenied
 from django.db.models import Count, Q
+from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 
@@ -25,8 +29,14 @@ from .serializers import (
 )
 from .services.ocr_service import extraer_texto_ocr
 from .services.semaforo_service import actualizar_estado_documento
+<<<<<<< Updated upstream
 from .services import enviar_documento_a_power_automate
 from django.conf import settings
+=======
+from .services.gemini_service import responder_consulta_documental
+from .services.power_automate import enviar_documento, PowerAutomateError
+from .services.identidad_service import evaluar_estado_identidad
+>>>>>>> Stashed changes
 import threading
 import logging
 
@@ -239,6 +249,14 @@ def chatbot_documental(request):
     return Response({"answer": respuesta})
 
 
+class GestionPostulantesPermission(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        rol = getattr(getattr(request.user, 'perfil_documental', None), 'rol', None)
+        return rol in ('admin', 'revisor') or (rol == 'postulante' and request.method in SAFE_METHODS)
+
+
 class PostulanteViewSet(viewsets.ModelViewSet):
     """
     ViewSet CRUD para Postulante.
@@ -253,16 +271,34 @@ class PostulanteViewSet(viewsets.ModelViewSet):
     - excluir_convocatoria: id de convocatoria; omite postulantes que ya tienen expediente ahí.
     """
     serializer_class = PostulanteSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, GestionPostulantesPermission]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['estado', 'numero_documento']
     search_fields = ['nombres', 'apellidos', 'email', 'numero_documento']
 
     def get_queryset(self):
-        qs = postulantes_con_rol_postulante()
+        qs = postulantes_con_rol_postulante().annotate(
+            total_documentos=Count('documentos', distinct=True),
+            total_expedientes=Count('expedientes', distinct=True),
+        ).order_by('-fecha_registro', '-pk')
+        if self.request.user.perfil_documental.rol == 'postulante':
+            qs = qs.filter(usuario=self.request.user)
         conv_id = self.request.query_params.get('excluir_convocatoria')
         if conv_id:
+            if not conv_id.isdigit():
+                raise ValidationError({'excluir_convocatoria': 'Debe ser un identificador numérico.'})
             qs = qs.exclude(expedientes__convocatoria_id=conv_id)
         return qs
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Lock the parent while checking relations, before any cascade can run.
+        instance = Postulante.objects.select_for_update().get(pk=instance.pk)
+        if instance.usuario_id or instance.documentos.exists() or instance.expedientes.exists():
+            return Response({'detail': 'Este postulante tiene cuenta o registros asociados. Desactívalo para conservar su historial.'}, status=409)
+        instance.delete()
+        return Response(status=204)
 
 
 class ConvocatoriaViewSet(viewsets.ModelViewSet):
@@ -336,7 +372,7 @@ class DocumentoViewSet(viewsets.ModelViewSet):
     - destroy: DELETE /api/documentos/{id}/ (eliminar)
     """
     serializer_class = DocumentoSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
     filterset_fields = ['postulante', 'convocatoria', 'estado', 'estado_semaforo']
     search_fields = ['nombre_archivo', 'postulante__nombres', 'postulante__apellidos']
@@ -347,6 +383,9 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         qs = Documento.objects.select_related(
             "postulante", "convocatoria", "documento_requerido"
         ).all()
+        perfil = getattr(self.request.user, 'perfil_documental', None)
+        if perfil is None or perfil.rol not in ('admin', 'revisor', 'postulante'):
+            return qs.none()
         return _queryset_por_postulante_si_aplica(qs, self.request.user, "postulante")
     
     def get_serializer_context(self):
@@ -356,19 +395,7 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         return context
 
     def perform_create(self, serializer):
-        """
-        ========================================================================
-        CREAR DOCUMENTO - AQUÍ SE EJECUTA EL SEMÁFORO AL SUBIR
-        ========================================================================
-        Crea el documento, ejecuta OCR y calcula el estado del semáforo.
-        
-        Flujo:
-        1. Guarda el documento en BD
-        2. Ejecuta OCR sobre el archivo (FASE 3)
-        3. Calcula el estado del semáforo (FASE 4)
-        4. Guarda texto_extraido y estado_semaforo
-        ========================================================================
-        """
+        """Valida permisos, guarda localmente, envía al flujo e inicia OCR."""
         convocatoria = serializer.validated_data.get('convocatoria')
         postulante = serializer.validated_data.get('postulante')
         documento_requerido = serializer.validated_data.get('documento_requerido')
@@ -381,7 +408,11 @@ class DocumentoViewSet(viewsets.ModelViewSet):
             if convocatoria.estado == 'cerrada' or getattr(convocatoria, 'archivado', False):
                 raise ValidationError("No se pueden cargar documentos en una convocatoria cerrada o archivada.")
 
+        self._validar_destino(postulante, convocatoria, documento_requerido)
         doc = serializer.save(estado='procesando')
+        self._enviar_a_sharepoint(doc)
+        if doc.datos_extraidos:
+            return  # La extracción de AI Builder no pasa por el OCR local.
         
         # Lanzar el proceso en segundo plano
         threading.Thread(
@@ -396,12 +427,103 @@ class DocumentoViewSet(viewsets.ModelViewSet):
         ACTUALIZAR DOCUMENTO - RECALCULAR SEMÁFORO AL ACTUALIZAR
         ========================================================================
         """
-        doc = serializer.save(estado='procesando')
+        reemplaza_archivo = 'archivo' in serializer.validated_data
+        if serializer.instance.datos_extraidos and not reemplaza_archivo:
+            if any(
+                campo in serializer.validated_data and serializer.validated_data[campo] != getattr(serializer.instance, campo)
+                for campo in ('postulante', 'convocatoria', 'documento_requerido')
+            ):
+                raise ValidationError('Para cambiar la asociación de un documento extraído debe cargar un nuevo archivo.')
+            estado = serializer.validated_data.get('estado')
+            if any(campo in serializer.validated_data for campo in ('estado', 'estado_semaforo', 'tipo_validacion')):
+                perfil = getattr(self.request.user, 'perfil_documental', None)
+                if perfil is None or perfil.rol not in ('admin', 'revisor'):
+                    raise PermissionDenied('La revisión del documento corresponde al personal autorizado.')
+            doc = serializer.save()
+            if estado in ('aprobado', 'rechazado', 'en_revision'):
+                doc.estado_semaforo = {'aprobado': 'verde', 'rechazado': 'rojo', 'en_revision': 'amarillo'}[estado]
+                doc.tipo_validacion = 'manual'
+                doc.save(update_fields=['estado_semaforo', 'tipo_validacion'])
+            return
+        if reemplaza_archivo or any(campo in serializer.validated_data for campo in ('postulante', 'convocatoria', 'documento_requerido')):
+            postulante = serializer.validated_data.get('postulante', serializer.instance.postulante)
+            convocatoria = serializer.validated_data.get('convocatoria', serializer.instance.convocatoria)
+            requerido = serializer.validated_data.get('documento_requerido', serializer.instance.documento_requerido)
+            _validar_subida_documento_postulante(self.request, postulante, convocatoria, requerido)
+            self._validar_destino(postulante, convocatoria, requerido)
+            if convocatoria.estado == 'cerrada' or convocatoria.archivado:
+                raise ValidationError('No se pueden cargar documentos en una convocatoria cerrada o archivada.')
+        if not reemplaza_archivo and serializer.instance.estado == 'error_procesamiento':
+            raise ValidationError('El documento tiene un error de procesamiento. Verifique el resultado antes de volver a cargarlo.')
+        reset = {'datos_extraidos': {}, 'texto_extraido': None, 'confianza_ocr': 0, 'estado_semaforo': 'amarillo'} if reemplaza_archivo else {}
+        doc = serializer.save(estado='procesando', **reset)
+        if reemplaza_archivo:
+            self._enviar_a_sharepoint(doc)
+        if doc.datos_extraidos:
+            return
         threading.Thread(
             target=ejecutar_procesamiento,
             args=(doc.id,),
             daemon=True
         ).start()
+
+    def _validar_destino(self, postulante, convocatoria, requerido):
+        perfil = getattr(self.request.user, 'perfil_documental', None)
+        if perfil is None or perfil.rol not in ('admin', 'revisor', 'postulante'):
+            raise PermissionDenied('Su cuenta no tiene un rol autorizado para cargar documentos.')
+        if not postulante or not convocatoria or not requerido:
+            raise ValidationError('Debe indicar postulante, convocatoria y documento requerido para la carga.')
+        if requerido.convocatoria_id != convocatoria.pk:
+            raise ValidationError('El requisito no pertenece a esta convocatoria.')
+
+    def perform_destroy(self, instance):
+        perfil = getattr(self.request.user, 'perfil_documental', None)
+        if perfil is None or perfil.rol not in ('admin', 'revisor', 'postulante'):
+            raise PermissionDenied('Su cuenta no tiene un rol autorizado para eliminar documentos.')
+        if perfil.rol == 'postulante':
+            if not instance.postulante or instance.postulante.usuario_id != self.request.user.pk:
+                raise PermissionDenied('Solo puede eliminar documentos de su propio expediente.')
+            if instance.convocatoria and (instance.convocatoria.estado == 'cerrada' or instance.convocatoria.archivado):
+                raise PermissionDenied('No puede eliminar documentos de una convocatoria cerrada o archivada.')
+
+        storage = instance.archivo.storage
+        nombre = instance.archivo.name
+        documento_id = instance.pk
+
+        def eliminar_archivo_local():
+            try:
+                storage.delete(nombre)
+            except OSError:
+                logger.error('No se pudo retirar el archivo local del documento eliminado %s', documento_id)
+
+        with transaction.atomic():
+            instance.delete()
+            if nombre:
+                transaction.on_commit(eliminar_archivo_local)
+
+    def _enviar_a_sharepoint(self, doc):
+        try:
+            resultado = enviar_documento(doc)
+        except PowerAutomateError as exc:
+            mensaje = str(exc)
+            doc.estado = 'error_procesamiento'
+            doc.observaciones = '\n'.join(filter(None, [doc.observaciones, 'SharePoint: ' + mensaje]))
+            doc.save(update_fields=['estado', 'observaciones'])
+            logger.warning('No se confirmó el envío a SharePoint del documento %s', doc.pk)
+            error = APIException(detail={'detail': mensaje, 'documento_id': doc.pk})
+            error.status_code = 502
+            raise error from None
+        doc.observaciones = '\n'.join(filter(None, [doc.observaciones, 'SharePoint: carga confirmada (HTTP %s).' % resultado.status_code]))
+        campos = ['observaciones']
+        if resultado.extraccion is not None:
+            doc.datos_extraidos = {**resultado.extraccion, 'envio': {'http_status': resultado.status_code}}
+            doc.estado, doc.estado_semaforo, mensaje = evaluar_estado_identidad(doc.datos_extraidos)
+            doc.tipo_validacion = 'automatica'
+            # El portal muestra este mensaje. La confirmación HTTP queda en el JSON
+            # y el historial, sin mezclar detalles técnicos con el motivo de rechazo.
+            doc.observaciones = mensaje
+            campos += ['datos_extraidos', 'estado', 'estado_semaforo', 'tipo_validacion']
+        doc.save(update_fields=campos)
 
 
 class UsuarioPerfilViewSet(viewsets.ModelViewSet):

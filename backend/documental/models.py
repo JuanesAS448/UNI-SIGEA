@@ -192,6 +192,7 @@ class Documento(models.Model):
     
     texto_extraido = models.TextField(null=True, blank=True)
     confianza_ocr = models.IntegerField(default=0, help_text='Confianza OCR de 0 a 100')
+    datos_extraidos = models.JSONField(default=dict, blank=True, editable=False)
     observaciones = models.TextField(null=True, blank=True)
     tipo_validacion = models.CharField(max_length=20, choices=TIPO_VALIDACION_CHOICES, default='automatica')
     

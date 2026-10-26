@@ -38,6 +38,9 @@ export interface UsuarioPerfil {
 export type EstadoPostulante = "activo" | "inactivo";
 
 export interface Postulante {
+    puede_eliminar?: boolean;
+    documentos_count?: number;
+    expedientes_count?: number;
     id: number;
     usuario: Usuario | null;
     nombres: string;
@@ -129,6 +132,33 @@ export type EstadoDocumento = "pendiente" | "en_revision" | "aprobado" | "rechaz
 export type EstadoSemaforo = "verde" | "amarillo" | "rojo";
 export type TipoValidacion = "automatica" | "manual";
 
+export type CampoIdentidad =
+    | "nombres" | "apellidos" | "numero_cedula" | "fecha_nacimiento"
+    | "fecha_expedicion" | "tipo_sangre" | "sexo" | "lugar_expedicion";
+
+export interface DatosExtraidosIdentidad {
+    origen: "ai_builder";
+    tipo_documento: "documento_identidad";
+    valores: Record<CampoIdentidad, string | null>;
+    confianzas: Record<CampoIdentidad, number | null>;
+    comparacion: {
+        coincidencia_identidad: boolean;
+        campos: Partial<Record<CampoIdentidad, { registrado: string; coincide: boolean | null }>>;
+    };
+}
+
+export interface ResumenExtraccion {
+    confianza_promedio: number | null;
+    campos_esperados: number;
+    campos_extraidos: number;
+    confianzas_disponibles: number;
+    campos_faltantes: CampoIdentidad[];
+    extraccion_completa: boolean;
+    coincidencia_identidad: boolean;
+    tiene_alertas_de_datos: boolean;
+    revision_pendiente: boolean;
+}
+
 export interface Documento {
     id: number;
     archivo: string;                          // ruta relativa en el servidor
@@ -146,6 +176,8 @@ export interface Documento {
     estado_semaforo: EstadoSemaforo;
     texto_extraido: string | null;
     confianza_ocr: number;                    // 0-100
+    datos_extraidos?: DatosExtraidosIdentidad | Record<string, never>;
+    resumen_extraccion?: ResumenExtraccion | null;
     observaciones: string | null;
     tipo_validacion: TipoValidacion;
     numero_documento_usuario: string | null;

@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
-import { Upload, AlertTriangle, FileText, Briefcase, Loader2, RefreshCw, Users } from "lucide-react";
-import { usePostulantes } from "@/hooks/usePostulantes";
+import { Upload, AlertTriangle, FileText, Briefcase, Loader2 } from "lucide-react";
+import Postulantes from "@/pages/Postulantes";
 import { useExpedientes } from "@/hooks/useExpedientes";
 import { useDocumentos, useSubirDocumento } from "@/hooks/useDocumentos";
 import type { Documento, DocumentoRequerido } from "@/types/api";
 import { SemaphoreBadge } from "@/components/SemaphoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { EliminarDocumentoButton } from "@/components/EliminarDocumentoButton";
+import { ExtraccionDocumento } from "@/components/ExtraccionDocumento";
 import { useAuth } from "@/contexts/AuthContext";
 import { convocatoriasService } from "@/services/convocatoriasService";
 import { ChatBotDocumental } from "@/components/ChatBotDocumental";
@@ -25,95 +27,6 @@ const estadoDocLabel: Record<string, string> = {
   rechazado: "Rechazado",
   error_procesamiento: "Error",
 };
-
-/** Catálogo global (admin / revisor): solo fichas con rol postulante en API */
-function VistaCatalogoPostulantes() {
-  const { data, isLoading, isError, refetch, isFetching } = usePostulantes();
-
-  const postulantes = data?.results ?? [];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Postulantes registrados</h1>
-          <p className="text-sm text-muted-foreground">
-            Usuarios con rol postulante o fichas manuales — {data?.count ?? "—"} en total
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-          Actualizar
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Cargando postulantes...</span>
-        </div>
-      ) : isError ? (
-        <p className="py-16 text-center text-sm text-destructive">
-          Error al cargar. ¿Está el backend corriendo?
-        </p>
-      ) : postulantes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border py-16 text-center">
-          <Users className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-muted-foreground">No hay postulantes registrados aún</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Los usuarios con rol postulante aparecen aquí; la revisión de documentos se hace en Convocatorias o Documentos.
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-border bg-card shadow-sm overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <th className="px-6 py-3">Postulante</th>
-                <th className="px-6 py-3">Documento</th>
-                <th className="px-6 py-3">Contacto</th>
-                <th className="px-6 py-3">Estado</th>
-                <th className="px-6 py-3">Registro</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {postulantes.map((p) => (
-                <tr key={p.id} className="hover:bg-accent/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                        {p.nombres.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {p.nombres} {p.apellidos}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{p.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-muted-foreground">{p.tipo_documento}</p>
-                    <p className="text-xs font-mono text-foreground">{p.numero_documento}</p>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{p.telefono}</td>
-                  <td className="px-6 py-4">
-                    <Badge variant={p.estado === "activo" ? "default" : "secondary"}>
-                      {p.estado === "activo" ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-muted-foreground">
-                    {new Date(p.fecha_registro).toLocaleDateString("es-CO")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function RequisitoFila({
   req,
@@ -175,12 +88,14 @@ function RequisitoFila({
                 </a>
               </Button>
             )}
+            <ExtraccionDocumento documento={documento} mostrarOcr={false} soloPorcentaje />
             <p className="text-xs text-muted-foreground">
               {estadoDocLabel[documento.estado] ?? documento.estado}
               {documento.observaciones && documento.estado === "rechazado" && (
                 <span className="mt-1 block text-destructive">{documento.observaciones}</span>
               )}
             </p>
+            {puedeSubir && <EliminarDocumentoButton documento={documento} />}
             {puedeSubir && documento.estado === "rechazado" && (
               <>
                 <input
@@ -446,5 +361,5 @@ export default function PortalPostulante() {
     );
   }
 
-  return <VistaCatalogoPostulantes />;
+  return <Postulantes />;
 }

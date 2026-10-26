@@ -24,3 +24,9 @@ backend/.env
 *.njsproj
 *.sln
 *.sw?
+
+
+__pycache__/
+*.pyc
+.venv/
+db.sqlite3

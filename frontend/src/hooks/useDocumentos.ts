@@ -57,3 +57,17 @@ export function useSubirDocumento() {
         },
     });
 }
+
+export function useEliminarDocumento() {
+    const queryClient = useQueryClient();
+
+    return useMutation<void, Error, number>({
+        mutationFn: (id) => documentosService.eliminar(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: DOCUMENTOS_KEY });
+            queryClient.invalidateQueries({ queryKey: EXPEDIENTES_KEY });
+            queryClient.invalidateQueries({ queryKey: CONVOCATORIAS_KEY });
+            queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+    });
+}

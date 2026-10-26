@@ -7,6 +7,9 @@ import type { Postulante, PostulanteCreate, PaginatedResponse } from "@/types/ap
 
 export interface PostulantesFiltros {
     excluir_convocatoria?: number;
+    page?: number;
+    search?: string;
+    estado?: "activo" | "inactivo";
 }
 
 export const postulantesService = {
@@ -16,6 +19,9 @@ export const postulantesService = {
      */
     getAll: (filtros?: PostulantesFiltros): Promise<PaginatedResponse<Postulante>> => {
         const params = new URLSearchParams();
+        if (filtros?.page) params.set("page", String(filtros.page));
+        if (filtros?.search) params.set("search", filtros.search);
+        if (filtros?.estado) params.set("estado", filtros.estado);
         if (filtros?.excluir_convocatoria != null) {
             params.append("excluir_convocatoria", String(filtros.excluir_convocatoria));
         }
@@ -46,4 +52,5 @@ export const postulantesService = {
     // data puede incluir cualquier campo del recurso de postulante, incluyendo estado
     update: (id: number, data: Partial<Postulante>): Promise<Postulante> =>
         apiClient.patch<Postulante>(`/postulantes/${id}/`, data),
+    delete: (id: number): Promise<void> => apiClient.delete<void>(`/postulantes/${id}/`),
 };

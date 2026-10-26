@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SemaphoreBadge } from "@/components/SemaphoreBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { EliminarDocumentoButton } from "@/components/EliminarDocumentoButton";
+import { ExtraccionDocumento } from "@/components/ExtraccionDocumento";
 import { useDocumentos, useActualizarDocumento } from "@/hooks/useDocumentos";
 import { useExpedientes } from "@/hooks/useExpedientes";
 import type { Documento, Expediente } from "@/types/api";
@@ -173,7 +175,7 @@ export default function Documentos() {
                   <th className="px-6 py-3">Postulante</th>
                   <th className="px-6 py-3">Estado</th>
                   <th className="px-6 py-3">Semáforo</th>
-                  <th className="px-6 py-3">Confianza OCR</th>
+                  <th className="px-6 py-3">Confianza</th>
                   <th className="px-6 py-3">Validación</th>
                   <th className="px-6 py-3">Acciones</th>
                 </tr>
@@ -195,15 +197,7 @@ export default function Documentos() {
                     <td className="px-6 py-4"><StatusBadge status={doc.estado} /></td>
                     <td className="px-6 py-4"><SemaphoreBadge status={doc.estado_semaforo} /></td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 w-16 rounded-full bg-border">
-                          <div
-                            className="h-2 rounded-full bg-primary transition-all"
-                            style={{ width: `${doc.confianza_ocr}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground">{doc.confianza_ocr}%</span>
-                      </div>
+                      <ExtraccionDocumento documento={doc} />
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-xs capitalize text-muted-foreground">{doc.tipo_validacion}</span>
@@ -216,6 +210,7 @@ export default function Documentos() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <EliminarDocumentoButton documento={doc} onDeleted={() => setSelected((current) => current?.id === doc.id ? null : current)} />
                         {(doc.estado === "pendiente" || doc.estado === "en_revision") && (
                           <>
                             <Button
@@ -248,7 +243,7 @@ export default function Documentos() {
 
       {/* Detail / Actions Dialog */}
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalle del Documento</DialogTitle>
           </DialogHeader>
@@ -276,8 +271,8 @@ export default function Documentos() {
                   <div className="mt-1"><SemaphoreBadge status={selected.estado_semaforo} /></div>
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Confianza OCR</Label>
-                  <p className="text-sm font-medium text-foreground">{selected.confianza_ocr}%</p>
+                  <Label className="text-muted-foreground">Confianza</Label>
+                  <ExtraccionDocumento documento={selected} />
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Tipo Validación</Label>
@@ -306,6 +301,7 @@ export default function Documentos() {
                   Ver archivo completo ↗
                 </a>
               )}
+              <EliminarDocumentoButton documento={selected} onDeleted={() => setSelected(null)} />
               {(selected.estado === "pendiente" || selected.estado === "en_revision") && (
                 <div className="space-y-3 border-t border-border pt-4">
                   <Label>Observación (requerida para rechazar)</Label>

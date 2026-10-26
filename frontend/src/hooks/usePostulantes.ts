@@ -40,7 +40,20 @@ export function useActualizarPostulante() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: POSTULANTES_KEY });
             queryClient.invalidateQueries({ queryKey: ["convocatorias"] });
+            queryClient.invalidateQueries({ queryKey: ["documentos"] });
+            queryClient.invalidateQueries({ queryKey: ["expedientes"] });
             queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+        },
+    });
+}
+
+export function useEliminarPostulante() {
+    const client = useQueryClient();
+    return useMutation({
+        mutationFn: postulantesService.delete,
+        onSuccess: () => {
+            client.invalidateQueries({ queryKey: POSTULANTES_KEY });
+            client.invalidateQueries({ queryKey: ["dashboard"] });
         },
     });
 }
