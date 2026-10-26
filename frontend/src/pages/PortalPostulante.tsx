@@ -63,22 +63,22 @@ function RequisitoFila({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-md border border-border/80 bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-foreground">{req.nombre}</p>
-        <p className="text-xs text-muted-foreground line-clamp-2">{req.descripcion}</p>
+        <p className="break-words text-[15px] font-semibold leading-5 text-foreground">{req.nombre}</p>
+        <p className="mt-1 break-words text-[13px] leading-5 text-muted-foreground">{req.descripcion}</p>
         {req.obligatorio && (
-          <Badge variant="outline" className="mt-1 text-[10px]">
+          <Badge variant="outline" className="mt-2 text-xs font-medium">
             Obligatorio
           </Badge>
         )}
       </div>
-      <div className="flex flex-col items-stretch gap-2 sm:items-end">
+      <div className="flex flex-wrap items-center gap-2 sm:max-w-[48%] sm:justify-end">
         {documento ? (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={documento.estado} />
-              <SemaphoreBadge status={documento.estado_semaforo} />
+              <StatusBadge status={documento.estado} className="px-2.5 py-1.5 text-xs" />
+              <SemaphoreBadge status={documento.estado_semaforo} className="px-2.5 py-1.5 text-xs" />
             </div>
             {documento.url_archivo && (
               <Button variant="outline" size="sm" asChild>
@@ -89,7 +89,7 @@ function RequisitoFila({
               </Button>
             )}
             <ExtraccionDocumento documento={documento} mostrarOcr={false} soloPorcentaje />
-            <p className="text-xs text-muted-foreground">
+            <p className="w-full break-words text-[13px] leading-5 text-muted-foreground">
               {estadoDocLabel[documento.estado] ?? documento.estado}
               {documento.observaciones && documento.estado === "rechazado" && (
                 <span className="mt-1 block text-destructive">{documento.observaciones}</span>
@@ -226,43 +226,43 @@ function VistaPostulanteReal() {
       : session?.email ?? "Postulante";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Mi postulación</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Mi postulación</h1>
+        <p className="max-w-4xl text-sm leading-6 text-muted-foreground">
           Convocatorias en las que está inscrito, requisitos y estado de cada documento. La revisión la realiza el personal
           autorizado desde convocatorias o documentación.
         </p>
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Datos de la cuenta</CardTitle>
-          <CardDescription>Ficha vinculada al usuario autenticado</CardDescription>
+        <CardHeader className="space-y-1 p-4 pb-3 sm:p-5 sm:pb-3">
+          <CardTitle className="text-lg font-semibold">Datos de la cuenta</CardTitle>
+          <CardDescription className="text-[13px]">Ficha vinculada al usuario autenticado</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <p className="text-xs text-muted-foreground">Nombre</p>
-            <p className="font-medium text-foreground">{nombreMostrado}</p>
+        <CardContent className="grid gap-2 px-4 pb-4 text-sm sm:grid-cols-2 sm:px-5 sm:pb-5 lg:grid-cols-4">
+          <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2.5">
+            <p className="text-[13px] font-medium text-muted-foreground">Nombre</p>
+            <p className="truncate text-sm font-medium text-foreground">{nombreMostrado}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Correo</p>
-            <p className="font-medium text-foreground">{session?.email}</p>
+          <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2.5">
+            <p className="text-[13px] font-medium text-muted-foreground">Correo</p>
+            <p className="break-all text-sm font-medium text-foreground">{session?.email}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">ID postulante</p>
-            <p className="font-mono text-foreground">{postulanteId}</p>
+          <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2.5">
+            <p className="text-[13px] font-medium text-muted-foreground">ID postulante</p>
+            <p className="font-mono text-sm text-foreground">{postulanteId}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Convocatorias activas en expediente</p>
-            <p className="font-medium text-foreground">{expedientes.length}</p>
+          <div className="min-w-0 rounded-md bg-muted/30 px-3 py-2.5">
+            <p className="text-[13px] font-medium leading-4 text-muted-foreground">Convocatorias activas en expediente</p>
+            <p className="text-sm font-medium tabular-nums text-foreground">{expedientes.length}</p>
           </div>
         </CardContent>
       </Card>
 
       {expedientes.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          <CardContent className="py-8 text-center text-sm leading-6 text-muted-foreground">
             Aún no está inscrito en ninguna convocatoria. Cuando un administrador le asigne una convocatoria, podrá
             cargar los requisitos aquí.
           </CardContent>
@@ -271,14 +271,17 @@ function VistaPostulanteReal() {
         <>
           {total > 0 && (
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Progreso de documentación</CardTitle>
-                <CardDescription>
-                  {aprobados} de {total} documentos aprobados
-                </CardDescription>
+              <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-3 sm:px-5">
+                <div>
+                  <CardTitle className="text-lg font-semibold">Progreso de documentación</CardTitle>
+                  <CardDescription className="mt-1 text-[13px]">
+                    {aprobados} de {total} documentos aprobados
+                  </CardDescription>
+                </div>
+                <span className="text-2xl font-semibold tabular-nums tracking-tight text-primary">{progreso}%</span>
               </CardHeader>
-              <CardContent>
-                <Progress value={progreso} className="h-3" />
+              <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <Progress value={progreso} className="h-2.5" />
               </CardContent>
             </Card>
           )}
@@ -290,15 +293,15 @@ function VistaPostulanteReal() {
 
             return (
               <Card key={c.id}>
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
                         <Briefcase className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <CardTitle className="text-base">{c.titulo}</CardTitle>
-                        <CardDescription>
+                      <div className="min-w-0">
+                        <CardTitle className="break-words text-lg font-semibold leading-6">{c.titulo}</CardTitle>
+                        <CardDescription className="mt-1 text-[13px]">
                           {c.fecha_inicio} — {c.fecha_fin}
                         </CardDescription>
                       </div>
@@ -308,9 +311,9 @@ function VistaPostulanteReal() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-2.5 px-4 pb-4 sm:px-5 sm:pb-5">
                   {(!c.documentos_requeridos || c.documentos_requeridos.length === 0) && (
-                    <p className="text-sm text-muted-foreground">Esta convocatoria aún no define requisitos.</p>
+                    <p className="text-sm leading-6 text-muted-foreground">Esta convocatoria aún no define requisitos.</p>
                   )}
                   {c.documentos_requeridos?.map((req) => {
                     const documento = ultimoDocumentoPorRequisito(

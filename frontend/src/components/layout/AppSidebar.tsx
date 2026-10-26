@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -29,10 +28,15 @@ const postulanteNavItems = [
   { label: "Cambiar contraseña", icon: KeyRound, href: "/cambiar-contrasena" },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({
+  mobileOpen,
+  onMobileClose,
+}: {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+}) {
   const location = useLocation();
   const navigate  = useNavigate();
-  const [isExpanded, setIsExpanded] = useState(false);
   const { session, signOut } = useAuth();
 
   const navItems =
@@ -49,27 +53,24 @@ export function AppSidebar() {
 
   return (
     <aside
+      id="app-sidebar"
+      aria-label="Navegación principal"
       className={cn(
-        "relative z-20 flex h-screen shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out",
-        isExpanded ? "absolute w-64 md:relative" : "w-16 md:w-20"
+        "fixed inset-y-0 left-0 z-40 flex h-screen w-64 shrink-0 flex-col border-r border-border bg-card shadow-lg transition-transform duration-200 ease-out lg:static lg:z-20 lg:w-[232px] lg:translate-x-0 lg:shadow-none",
+        mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible"
       )}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
     >
       {/* Logo */}
-      <div className="flex h-16 shrink-0 items-center justify-center overflow-hidden border-b border-border px-4 lg:h-[72px]">
+      <div className="flex h-16 shrink-0 items-center justify-center overflow-hidden border-b border-border px-5 lg:h-[72px]">
         <img
           src="/logo.png"
           alt="UNI SIGEA Logo"
-          className={cn(
-            "h-14 w-auto object-contain transition-transform duration-200",
-            !isExpanded && "scale-125 origin-center"
-          )}
+          className="h-14 w-auto object-contain"
         />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1.5 overflow-y-auto px-2 py-5 md:px-3">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 py-5">
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
@@ -80,24 +81,23 @@ export function AppSidebar() {
               key={item.href}
               to={item.href}
               className={cn(
-                "flex items-center gap-3 overflow-hidden whitespace-nowrap rounded-md px-3 py-2.5 text-[13px] font-medium transition-colors",
+                "flex items-center gap-3 overflow-hidden whitespace-nowrap rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                !isExpanded && "justify-center px-0"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
               )}
-              title={!isExpanded ? item.label : undefined}
+              onClick={onMobileClose}
             >
               <item.icon className="h-[18px] w-[18px] shrink-0" />
-              {isExpanded && <span>{item.label}</span>}
+              <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
       {/* User */}
-      <div className={cn("border-t border-border p-4 transition-all duration-200", !isExpanded && "flex justify-center p-2")}>
-        <div className={cn("flex items-center gap-3", !isExpanded && "flex-col gap-2")}>
+      <div className="border-t border-border p-4">
+        <div className="flex items-center gap-3">
           <div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground"
             title={displayName}
@@ -105,19 +105,18 @@ export function AppSidebar() {
             {initial}
           </div>
 
-          {isExpanded && (
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
-              <p className="truncate text-xs text-muted-foreground capitalize">
-                {session ? session.rol.replace("_", " ") : "Invitado"}
-              </p>
-            </div>
-          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+            <p className="truncate text-xs text-muted-foreground capitalize">
+              {session ? session.rol.replace("_", " ") : "Invitado"}
+            </p>
+          </div>
 
           <button
             onClick={handleLogout}
-            className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+            className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
             title="Cerrar sesión"
+            aria-label="Cerrar sesión"
           >
             <LogOut className="h-4 w-4" />
           </button>

@@ -9,10 +9,10 @@ const config: Record<string, { label: string; className: string }> = {
   error_procesamiento: { label: "Error", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, className }: { status: string; className?: string }) {
   const c = config[status as string] ?? config["pendiente"]!;
   return (
-    <span className={cn("inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium leading-none", c.className)}>
+    <span className={cn("inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium leading-none", c.className, className)}>
       {c.label}
     </span>
   );

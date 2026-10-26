@@ -229,7 +229,7 @@ def responder_consulta_documental(mensaje):
     if respuesta_enlace:
         return respuesta_enlace
 
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_A  PI_KEY")
     if not api_key:
         logger.warning("GEMINI_API_KEY no esta configurada.")
         return _respuesta_local(mensaje)
