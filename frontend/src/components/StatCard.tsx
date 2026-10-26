@@ -12,15 +12,15 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon: Icon, description, className, iconClassName }: StatCardProps) {
   return (
-    <div className={cn("rounded-xl border border-border bg-card p-6 shadow-sm", className)}>
+    <div className={cn("rounded-lg border border-border/80 bg-card p-4 shadow-sm sm:p-5", className)}>
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="mt-2 text-3xl font-bold text-card-foreground">{value}</p>
-          {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium leading-5 text-muted-foreground">{title}</p>
+          <p className="mt-1.5 text-3xl font-semibold tabular-nums tracking-tight text-card-foreground">{value}</p>
+          {description && <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>}
         </div>
-        <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", iconClassName || "bg-primary/10")}>
-          <Icon className={cn("h-5 w-5", iconClassName ? "text-current" : "text-primary")} />
+        <div className={cn("ml-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-md", iconClassName || "bg-primary/10")}>
+          <Icon className={cn("h-[18px] w-[18px]", iconClassName ? "text-current" : "text-primary")} />
         </div>
       </div>
     </div>

@@ -50,26 +50,26 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-border bg-card transition-all duration-300 ease-in-out z-20 relative",
-        isExpanded ? "w-64 absolute md:relative" : "w-20"
+        "relative z-20 flex h-screen shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out",
+        isExpanded ? "absolute w-64 md:relative" : "w-16 md:w-20"
       )}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
       {/* Logo */}
-      <div className="flex h-[80px] items-center justify-center border-b-2 border-primary px-6 shrink-0 overflow-hidden">
+      <div className="flex h-16 shrink-0 items-center justify-center overflow-hidden border-b border-border px-4 lg:h-[72px]">
         <img
           src="/logo.png"
           alt="UNI SIGEA Logo"
           className={cn(
-            "h-16 w-auto object-contain transition-all duration-300",
-            !isExpanded && "scale-150 origin-center"
+            "h-14 w-auto object-contain transition-transform duration-200",
+            !isExpanded && "scale-125 origin-center"
           )}
         />
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+      <nav className="flex-1 space-y-1.5 overflow-y-auto px-2 py-5 md:px-3">
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
@@ -80,15 +80,15 @@ export function AppSidebar() {
               key={item.href}
               to={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap",
+                "flex items-center gap-3 overflow-hidden whitespace-nowrap rounded-md px-3 py-2.5 text-[13px] font-medium transition-colors",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
                 !isExpanded && "justify-center px-0"
               )}
               title={!isExpanded ? item.label : undefined}
             >
-              <item.icon className="h-5 w-5 shrink-0" />
+              <item.icon className="h-[18px] w-[18px] shrink-0" />
               {isExpanded && <span>{item.label}</span>}
             </Link>
           );
@@ -96,10 +96,10 @@ export function AppSidebar() {
       </nav>
 
       {/* User */}
-      <div className={cn("border-t border-border p-4 transition-all duration-300", !isExpanded && "flex justify-center p-2")}>
+      <div className={cn("border-t border-border p-4 transition-all duration-200", !isExpanded && "flex justify-center p-2")}>
         <div className={cn("flex items-center gap-3", !isExpanded && "flex-col gap-2")}>
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground"
             title={displayName}
           >
             {initial}

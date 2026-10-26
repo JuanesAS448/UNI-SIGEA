@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, MessageCircle, Send, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,29 @@ const MENSAJE_INICIAL: ChatMessage = {
   role: "assistant",
   text: "Hola. Puedo ayudarte con dudas sobre documentos requeridos, validaciones y carga de archivos.",
 };
+
+function renderMessageText(text: string) {
+  return text.split(/(https?:\/\/[^\s<>"']+)/gi).map((part, index) => {
+    if (!/^https?:\/\//i.test(part)) return part;
+
+    const trailingPunctuation = part.match(/[.,!?;:]+$/)?.[0] ?? "";
+    const url = part.slice(0, part.length - trailingPunctuation.length);
+
+    return (
+      <Fragment key={`${index}-${part}`}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="break-all underline underline-offset-2 hover:opacity-80"
+        >
+          {url}
+        </a>
+        {trailingPunctuation}
+      </Fragment>
+    );
+  });
+}
 
 export function ChatBotDocumental() {
   const [open, setOpen] = useState(false);
@@ -108,7 +131,9 @@ export function ChatBotDocumental() {
                         : "bg-muted text-foreground"
                     )}
                   >
-                    {message.text}
+                    <span className="whitespace-pre-wrap break-words">
+                      {renderMessageText(message.text)}
+                    </span>
                   </div>
                 </div>
               ))}
